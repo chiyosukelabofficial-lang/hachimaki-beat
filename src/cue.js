@@ -2,9 +2,10 @@
 const lerp = (a, b, t) => a + (b - a) * t;
 function cueSound(snd, w, e) {
   switch (snd) {
-    case 'pon': tone('sine', 520, w, .09, .5, {to: 980, toT: .05, perc: 1}); noiseHit(w, .03, .15, 2000); break;
+    case 'pon': { const m = chordAt(e.t); tone('sine', mtof(m[0] + 24), w, .1, .5, {to: mtof(m[0] + 36), toT: .05, perc: 1}); } noiseHit(w, .03, .15, 2000); break;
     case 'goro': tone('triangle', 110, w, .25, .6, {to: 70, perc: 1}); noiseHit(w, .18, .35, 200); noiseHit(w + .09, .14, .25, 200); break;
-    case 'kira': tone('sine', 1760, w, .08, .3, {perc: 1}); tone('sine', 2637, w + .04, .12, .25, {perc: 1}); break;
+    case 'kira': { const m = chordAt(e.t); tone('sine', mtof(m[2] + 36), w, .08, .3, {perc: 1}); tone('sine', mtof(m[1] + 48), w + .04, .12, .22, {perc: 1}); } break;
+    case 'suika': { const m = chordAt(e.t); tone('sine', mtof(m[0] + 12), w, .3, .6, {to: mtof(m[0] + 19), toT: .12, perc: 1}); noiseHit(w, .04, .2, 800); } break;
     case 'gon': tone('square', 90, w, .18, .4, {to: 60, lp: 600, perc: 1}); noiseHit(w, .08, .4, 300); break;
     case 'wan': tone('sawtooth', 620, w, .14, .3, {to: 380, toT: .1, lp: 1800}); tone('square', 310, w, .14, .12, {to: 190, toT: .1, lp: 1200}); break;
     case 'kakon': tone('triangle', 1500, w, .07, .45, {perc: 1}); tone('sine', 760, w + .01, .12, .4, {perc: 1}); break;
@@ -39,8 +40,11 @@ function voiceAt(w, dur, f, vol) {
 }
 function voiceStart() { voiceStop(); voiceNode = voiceAt(actx.currentTime, 0, 260, .3); }
 function voiceStop() { if (voiceNode && actx) { const t = actx.currentTime; try { voiceNode.g.gain.cancelScheduledValues(t); voiceNode.g.gain.setValueAtTime(voiceNode.g.gain.value, t); voiceNode.g.gain.linearRampToValueAtTime(0, t + .05); voiceNode.o.stop(t + .08); voiceNode.l.stop(t + .08); } catch (e) {} } voiceNode = null; }
+function chordAt(t) { let m = null; if (G && G.ev) for (const e of G.ev) { if (e.t > t + .02) break; if (e.type === 'chord') m = e.midis; } return m || [48, 52, 55]; }
 function sfxK(k, midi) {
   if (!actx) return; const w = actx.currentTime;
+  if (k === 'bell') { tone('sine', mtof(midi), w, .45, .45, {perc: 1}); tone('sine', mtof(midi + 12), w, .3, .18, {perc: 1}); tone('triangle', mtof(midi + 19), w, .15, .08, {perc: 1}); return; }
+  if (k === 'wood') { tone('triangle', mtof(midi), w, .07, .6, {perc: 1}); tone('sine', mtof(midi) * 2.4, w, .04, .25, {perc: 1}); return; }
   if (k === 'suzu') { tone('sine', 2100, w, .5, .4, {perc: 1}); tone('sine', 2900, w, .35, .25, {perc: 1}); tone('sine', 4200, w, .2, .1, {perc: 1}); }
   else if (k === 'gulp') { tone('sine', 260, w + .05, .12, .7, {to: 120, perc: 1}); noiseHit(w + .05, .04, .4, 2000); }
   else if (k === 'bonk') { tone('sine', 220, w, .18, 1, {to: 90, perc: 1}); tone('square', 880, w, .04, .15, {perc: 1}); noiseHit(w, .07, .5, 900); }
@@ -60,7 +64,7 @@ function sfxK(k, midi) {
   else if (k === 'heyp') { tone('sawtooth', 520, w, .15, .18, {to: 720, toT: .06, lp: 2000}); }
   else if (k === 'don') { tone('sine', 120, w, .2, .9, {to: 60, perc: 1}); noiseHit(w, .05, .3, 500); }
 }
-const CUELBL = {pon: 'ポン', goro: 'ゴロッ', kira: 'キラッ', gon: 'ゴンッ', wan: 'ワン！', kakon: 'カコン', buzz: 'ブン', buzz2: 'ブッ', poko: 'ポコ', oink: 'ブー', suu: 'スッ', noo: 'の〜〜', ha: 'ハッ！', ta: 'タン', pi: 'ピッ', hk1: 'ハッ', hk2: 'ケ', hk3: 'ヨイ', hey: 'ヘイ！'};
+const CUELBL = {suika: 'ポーン', pon: 'ポン', goro: 'ゴロッ', kira: 'キラッ', gon: 'ゴンッ', wan: 'ワン！', kakon: 'カコン', buzz: 'ブン', buzz2: 'ブッ', poko: 'ポコ', oink: 'ブー', suu: 'スッ', noo: 'の〜〜', ha: 'ハッ！', ta: 'タン', pi: 'ピッ', hk1: 'ハッ', hk2: 'ケ', hk3: 'ヨイ', hey: 'ヘイ！'};
 const SEQ = __SEQ__;
 function sfDraw(f, x, yb, h, o = {}) {
   const im = IM[f.k]; if (!im || !im.complete || !im.naturalWidth) return;
@@ -96,11 +100,14 @@ const SCENES = {
     pats: [{lvl: 0, len: 4, c: [[0, 'pon'], [2, 'pon']], h: [[1, 0, 0], [3, 0, 1]]},
       {lvl: 1, len: 4, c: [[0, 'pon'], [2, 'goro']], h: [[1, 0, 0], [3, 0, 1, 1]]},
       {lvl: 1, len: 4, c: [[0, 'pon'], [1, 'pon'], [2, 'pon']], h: [[1, 0, 0], [2, 0, 1], [3, 0, 2]]},
+      {lvl: 1, len: 4, c: [[0, 'suika'], [2, 'pon']], h: [[2, 0, 0], [3, 0, 1]]},
+      {lvl: 2, len: 4, c: [[0, 'pon'], [1, 'suika'], [2.5, 'pon']], h: [[1, 0, 0], [3, 0, 1], [3.5, 0, 2]]},
       {lvl: 2, len: 4, c: [[0, 'goro'], [1, 'pon'], [1.5, 'pon'], [2.5, 'pon']], h: [[1, 0, 0, 1], [2, 0, 1], [2.5, 0, 2], [3.5, 0, 3]]},
       {lvl: 2, len: 4, c: [[0, 'pon'], [.5, 'pon'], [2, 'goro'], [2.5, 'pon']], h: [[1, 0, 0], [1.5, 0, 1], [3, 0, 2, 1], [3.5, 0, 3]]}],
     L() { const gy = H * .8, h = Math.min(H * .3, W * .8 / 1.33), cx = W * .58; return {gy, h, cx, wy: gy - h * .38}; },
     head(l, bob) { return sfPt(SEQ.tub[0], [.48, .1], l.cx, l.gy - bob, l.h); },
-    pos() { const l = this.L(), hd = this.head(l, 0); return [hd[0], hd[1] - 70]; }, cuePos() { return [W * .2, H * .26]; }, hitSfx() { sfxK('suzu'); },
+    pos() { const l = this.L(), hd = this.head(l, 0); return [hd[0], hd[1] - 70]; }, cuePos() { return [W * .2, H * .26]; }, hitSfx(n) { sfxK('bell', chordAt(n.t)[n.snd === 'suika' ? 0 : 2] + 24); if (n.snd === 'suika') sfxK('don'); },
+    suika(x, y, r, rot) { ctx.save(); ctx.translate(x, y); ctx.rotate(rot || 0); circle(0, 0, r, '#5fa04a', INK, 3); ctx.strokeStyle = '#2f5e2a'; ctx.lineWidth = 4; for (const k of [-.5, 0, .5]) { ctx.beginPath(); ctx.ellipse(k * r, 0, r * .18, r * .92, 0, 0, 7); ctx.stroke(); } circle(-r * .35, -r * .4, r * .18, 'rgba(255,255,255,.45)'); ctx.restore(); },
     mikan(x, y, r, rot) { ctx.save(); ctx.translate(x, y); ctx.rotate(rot || 0); circle(0, 0, r, '#f39a2b', INK, 2.5); ctx.fillStyle = '#5c9a3a'; ctx.beginPath(); ctx.ellipse(r * .35, -r * .9, r * .45, r * .2, -.5, 0, 7); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.stroke(); circle(-r * .35, -r * .3, r * .2, 'rgba(255,255,255,.55)'); ctx.restore(); },
     rock(x, y, r, rot) { ctx.save(); ctx.translate(x, y); ctx.rotate(rot || 0); ctx.beginPath(); for (let k = 0; k < 7; k++) { const a = k / 7 * 6.283, q = r * (.8 + .2 * Math.sin(k * 2.3)); ctx.lineTo(Math.cos(a) * q, Math.sin(a) * q); } ctx.closePath(); ctx.fillStyle = '#9a9a92'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.stroke(); ctx.restore(); },
     draw(now) {
@@ -112,25 +119,25 @@ const SCENES = {
       for (let i = 0; i < 4; i++) { const k = (now * 30 + i * 40) % 120, x = l.cx + (i - 1.5) * l.h * .35 + Math.sin(now + i) * 12, y = l.wy - 30 - k; ctx.globalAlpha = .55 * (1 - k / 120); ctx.beginPath(); ctx.moveTo(x, y + 30); ctx.bezierCurveTo(x - 12, y + 15, x + 12, y + 10, x, y); ctx.stroke(); }
       ctx.globalAlpha = 1;
       let st = 0, lastOk = null;
-      for (const n of ns) { if (!n.res || n.hitT > now) continue; if (n.res === 'MISS' && (!n.trap || n.bonk)) st = 0; else if (!n.trap && n.res !== 'MISS') { st++; lastOk = n; } }
+      for (const n of ns) { if (!n.res || n.hitT > now) continue; if (n.res === 'MISS' && (!n.trap || n.bonk)) st = 0; else if (!n.trap && n.res !== 'MISS') { if (n.snd !== 'suika') st++; lastOk = n; } }
       const bonk = ns.find(n => n.bonk && now - n.hitT < .8), drop = ns.find(n => n.res === 'MISS' && !n.trap && now - n.hitT < .8);
       const sp = Math.max(0, spring(ta)), bob = ta >= 0 && ta < .28 ? Math.sin(Math.PI * ta / .28) * l.h * .08 : 0, T = SEQ.tub;
       if (bonk) seqPlay(T, [[2, 0]], 0, l.cx + Math.sin(now * 60) * 4 * (1 - (now - bonk.hitT) / .8), l.gy, l.h);
       else if (drop) seqPlay(T, [[1, 0]], 0, l.cx, l.gy, l.h);
       else seqPlay(T, [[0, 0]], 0, l.cx, l.gy - bob, l.h, {sx: 1 + .05 * sp, sy: 1 - .05 * sp});
       const hd = this.head(l, bob), r = l.h * .075;
-      if (!bonk && !drop) for (let i = 0; i < Math.min(st, 9); i++) { const w = Math.sin(now * 3 + i) * i * 1.3; this.mikan(hd[0] + w, hd[1] - r * .6 - i * r * 1.75, r, Math.sin(now * 2 + i) * .1); }
+      if (!bonk && !drop) for (let i = 0; i < Math.min(st, 7); i++) { const w = Math.sin(now * 3 + i) * i * 1.3; this.mikan(hd[0] + w, hd[1] - r * .6 - i * r * 1.75, r, Math.sin(now * 2 + i) * .1); }
       const x0 = -30, y0 = H * .34;
       for (const n of ns) {
         if (now < n.cueT - .02) continue;
         const tx = n.trap ? hd[0] + r * 2.5 : hd[0], ty = n.trap ? hd[1] - l.h * .14 : hd[1] - r * .6 - st * r * 1.75, span = Math.max(.2, n.t - n.cueT), q = (now - n.cueT) / span;
         if (n.bonk) { const d = now - n.hitT; if (d < 1) this.rock(hd[0] - d * 240, hd[1] - d * 420 + d * d * 1100, r * 1.15, d * 12); continue; }
-        if (n.res && n.res !== 'MISS' && !n.trap) continue;
+        if (n.res && n.res !== 'MISS' && !n.trap) { const d = now - n.hitT; if (n.snd === 'suika' && d < .7) { const R = r * 1.8; for (const s of [-1, 1]) { ctx.save(); ctx.translate(hd[0] + s * d * 160, hd[1] - R * .6 - d * 200 + d * d * 900); ctx.rotate(s * d * 6); ctx.beginPath(); ctx.arc(0, 0, R, s > 0 ? -1.57 : 1.57, s > 0 ? 1.57 : 4.71); ctx.closePath(); ctx.fillStyle = '#e85a5a'; ctx.fill(); ctx.strokeStyle = '#5fa04a'; ctx.lineWidth = 5; ctx.stroke(); ctx.restore(); } if (d < .45) text('パカッ！', hd[0], hd[1] - R * 2.2, 30, '#fff', {stroke: 6, sc: '#e85a5a', a: 1 - d / .45}); } continue; }
         const A = H * .1 + span * 90, px = lerp(x0, tx, q), py0 = lerp(y0, ty, q) - Math.sin(Math.PI * Math.min(q, 1)) * A + (q > 1 ? (q - 1) * (q - 1) * H * 3 : 0);
         if (q > 1) { const d = (q - 1) * span; if (d > 1) continue; 
           const lim = l.gy - r * 1.1, py = Math.min(py0, lim); if (n.trap && py >= lim && d < .5) text('ゴロン', px, lim - 40, 20, '#fff', {stroke: 5, sc: '#8a8a80', a: 1 - d * 2});
-          ctx.globalAlpha = clamp(1 - d, 0, 1); n.trap ? this.rock(px + d * 80, py, r * 1.15, q * 6) : this.mikan(px + d * 120, py, r, q * 5); ctx.globalAlpha = 1; continue; }
-        n.trap ? this.rock(px, py0, r * 1.15, q * 6) : this.mikan(px, py0, r, q * 5);
+          ctx.globalAlpha = clamp(1 - d, 0, 1); n.trap ? this.rock(px + d * 80, py, r * 1.15, q * 6) : n.snd === 'suika' ? this.suika(px + d * 120, Math.min(py, l.gy - r * 1.8), r * 1.8, q * 3) : this.mikan(px + d * 120, py, r, q * 5); ctx.globalAlpha = 1; continue; }
+        n.trap ? this.rock(px, py0, r * 1.15, q * 6) : n.snd === 'suika' ? this.suika(px, py0, r * 1.8, q * 3) : this.mikan(px, py0, r, q * 5);
       }
       if (bonk) { const d = now - bonk.hitT; for (let k = 0; k < 3; k++) text('★', hd[0] + Math.cos(now * 6 + k * 2.1) * 40, hd[1] + Math.sin(now * 6 + k * 2.1) * 12, 20, '#f2c12e', {stroke: 3}); text('ゴツン！', hd[0] + 50, hd[1] - 60, 26, '#fff', {stroke: 6, sc: '#8a6a4a', a: 1 - d / .8}); }
       if (drop) text('zzz', hd[0] + 40, hd[1] - 30 - (now - drop.hitT) * 30, 22, '#fff', {stroke: 5, sc: '#6aa3b5'});
@@ -169,8 +176,8 @@ const SCENES = {
       {lvl: 2, len: 4, c: [[0, 'gon'], [.5, 'gon'], [1.5, 'kira'], [2, 'kira']], h: [[1, 0, 0, 1], [2.5, 0, 2]]},
       {lvl: 2, len: 4, c: [[0, 'kira'], [.5, 'kira'], [1.5, 'gon'], [2, 'gon']], h: [[1, 0, 0], [2.5, 0, 2, 1]]}],
     L() { return {gy: H * .72, x: W * .46, h: Math.min(H * .3, W * .62)}; },
-    pos() { const l = this.L(); return [l.x, l.gy - l.h - 10]; }, cuePos() { return [W * .5, H * .2]; }, hitSfx() { sfxK('tok'); },
-    cap(x, y, r, rot) { ctx.save(); ctx.translate(x, y); ctx.rotate(rot || 0); ctx.beginPath(); for (let k = 0; k < 24; k++) { const a = k / 24 * 6.283, q = r * (k % 2 ? 1 : .86); ctx.lineTo(Math.cos(a) * q, Math.sin(a) * q * .5); } ctx.closePath(); ctx.fillStyle = '#d9dde2'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.stroke(); ellipse(0, -r * .06, r * .62, r * .24, '#f4f7fa', INK, 1.5); ctx.restore(); },
+    pos() { const l = this.L(); return [l.x, l.gy - l.h - 10]; }, cuePos() { return [W * .5, H * .2]; }, hitSfx(n) { sfxK('wood', chordAt(n.t)[0] + 36); },
+    cap(x, y, r, rot, gold) { ctx.save(); ctx.translate(x, y); ctx.rotate(rot || 0); ctx.beginPath(); for (let k = 0; k < 24; k++) { const a = k / 24 * 6.283, q = r * (k % 2 ? 1 : .86); ctx.lineTo(Math.cos(a) * q, Math.sin(a) * q * .5); } ctx.closePath(); ctx.fillStyle = gold ? '#f2c12e' : '#d9dde2'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.stroke(); ellipse(0, -r * .06, r * .62, r * .24, gold ? '#ffe27a' : '#f4f7fa', INK, 1.5); ctx.restore(); },
     draw(now) {
       const l = this.L(), ta = tapAge(now), ns = G.byG.mole || [], qs = G.cuesByG.mole || [], ph = ((now / G.song.spb) % 1 + 1) % 1;
       bgSky('#e9f2d9', '#cfe3a8');
@@ -189,7 +196,7 @@ const SCENES = {
       const r = l.h * .14;
       for (const n of ns) {
         if (n.trap || now < n.cueT - .02) continue;
-        if (!n.res) { const q = clamp((now - n.cueT) / Math.max(.2, n.t - n.cueT), 0, 1.2), y = lerp(H * .16, l.gy - l.h * .8, q); this.cap(l.x, y, r, Math.sin(now * 10) * .2); if (Math.sin(now * 20) > 0) text('✦', l.x + r * 1.1, y - r * .6, 18, '#fff', {stroke: 3, sc: '#f2c12e'}); }
+        if (!n.res) { const q = clamp((now - n.cueT) / Math.max(.2, n.t - n.cueT), 0, 1.2), y = lerp(H * .16, l.gy - l.h * .8, q); this.cap(l.x, y, r * (n.fin ? 1.3 : 1), Math.sin(now * 10) * .2, n.fin); if (Math.sin(now * 20) > 0) text('✦', l.x + r * 1.1, y - r * .6, 18, '#fff', {stroke: 3, sc: '#f2c12e'}); }
         else if (n.res === 'MISS') { const d = now - n.hitT; if (d < .8) this.cap(l.x + d * 300, l.gy - l.h * .5 - d * 260 + d * d * 700, r, d * 14); }
       }
       if (tr) { const dt = now - tr.t, th = dt < -.09 ? 1.15 + Math.sin(now * 8) * .06 : dt < 0 ? lerp(1.15, -.78, (dt + .09) / .09) : dt < .18 ? -.78 : lerp(-.78, 1.15, Math.min(1, (dt - .18) / .25)), Lh = l.h * .85, px = l.x + l.h * .78, py = l.gy - l.h * 1.05;
@@ -282,6 +289,7 @@ const SCENES = {
     pats: [{lvl: 0, len: 4, c: [[0, 'ta'], [.5, 'ta'], [2, 'ta'], [2.5, 'ta']], h: [[1, 0, 0], [3, 0, 2]]},
       {lvl: 1, len: 4, c: [[0, 'ta'], [.5, 'ta'], [2, 'wan']], h: [[1, 0, 0], [3, 0, 2, 1]]},
       {lvl: 1, len: 4, c: [[0, 'ta'], [1, 'ta'], [2.5, 'ta'], [3, 'ta']], h: [[2, 0, 0], [3.5, 0, 2]]},
+      {lvl: 2, len: 4, c: [[0, 'ta'], [.5, 'ta'], [2.5, 'ta'], [3, 'ta']], h: [[1, 0, 0], [1.5, 0, 1], [3.5, 0, 3]]},
       {lvl: 2, len: 4, c: [[0, 'wan'], [1, 'ta'], [1.5, 'ta'], [2.5, 'ta'], [3, 'ta']], h: [[1, 0, 0, 1], [2, 0, 1], [3.5, 0, 3]]},
       {lvl: 2, len: 4, c: [[0, 'ta'], [.5, 'ta'], [1.5, 'ta'], [2, 'ta'], [3, 'wan']], h: [[1, 0, 0], [2.5, 0, 2], [4, 0, 4, 1]]}],
     L() { return {gy: H * .72, px: W * .3, h: Math.min(H * .19, 160)}; },
@@ -296,13 +304,13 @@ const SCENES = {
       ctx.strokeStyle = 'rgba(140,100,60,.55)'; ctx.lineWidth = 4; for (let i = 0; i < 9; i++) { const x = ((i * 60 - now * V * .5) % 540 + 540) % 540 - 30; ctx.beginPath(); ctx.moveTo(x, l.gy - 52); ctx.lineTo(x, l.gy - 12); ctx.stroke(); } ctx.beginPath(); ctx.moveTo(0, l.gy - 42); ctx.lineTo(W, l.gy - 42); ctx.stroke();
       ctx.fillStyle = '#d9a06a'; ctx.fillRect(0, l.gy, W, H); ctx.fillStyle = INK; ctx.fillRect(0, l.gy - 1.5, W, 3);
       ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 4; for (let i = 0; i < 8; i++) { const x = ((i * 90 - now * V) % 720 + 720) % 720 - 45; ctx.beginPath(); ctx.moveTo(x, l.gy + 40); ctx.lineTo(x + 44, l.gy + 40); ctx.stroke(); }
-      let jump = null, trip = null, munch = null;
+      let jump = null, trip = null, munch = null, jy = 0; const arc = d => Math.sin(Math.PI * clamp(d / .45, 0, 1));
       const TO = l.px + l.h * .62, qs = G.cuesByG.hurdle || [];
       for (const n of ns) {
         const x = (n.trap ? l.px + l.h * .45 : TO) + (n.t - now) * V;
         if (n.trap) {
           const by = l.gy - l.h * .42;
-          if (n.bonk) { const d = now - n.hitT; if (d >= 0 && d < .45) { jump = d; trip = null; } if (x > -40 && x < W + 40) this.bone(x, by, 20, now * 8); if (now > n.t && now - n.t < .5) text('あっ…', l.px - 20, l.gy - l.h * 1.5, 22, '#fff', {stroke: 5, sc: '#8a6a4a', a: 1 - (now - n.t) * 2}); continue; }
+          if (n.bonk) { const d = now - n.hitT; if (d >= 0 && d < .45) { jump = d; trip = null; jy = Math.max(jy, arc(d)); } if (x > -40 && x < W + 40) this.bone(x, by, 20, now * 8); if (now > n.t && now - n.t < .5) text('あっ…', l.px - 20, l.gy - l.h * 1.5, 22, '#fff', {stroke: 5, sc: '#8a6a4a', a: 1 - (now - n.t) * 2}); continue; }
           if (now < n.t) { if (x < W + 40 && now > n.cueT - .1) this.bone(x, by - Math.abs(Math.sin(now * 9)) * 16, 20, now * 8); }
           else if (now - n.t < .5) { munch = n; }
           continue;
@@ -310,12 +318,12 @@ const SCENES = {
         if (now < n.cueT - .05 && x > W + 60) continue;
         let rot = 0, a = 1, hx = x;
         if (n.res === 'MISS') { const d = now - n.hitT; if (d > .8) continue; hx = l.px + l.h * .35 - d * V * .5; rot = Math.min(1.4, d * 7); a = 1 - d / .8; if (d < .6) { trip = d; jump = null; } }
-        else if (n.res) { const d = now - n.hitT; if (d < .45 && d >= 0) { jump = d; trip = null; } }
+        else if (n.res) { const d = now - n.hitT; if (d < .45 && d >= 0) { jump = d; trip = null; jy = Math.max(jy, arc(d)); } }
         if (hx < -60 || hx > W + 60) continue;
         this.hd(hx, l.gy, rot, a);
       }
       if (trip != null) { spr('pug_trip', l.px, l.gy + 8, l.h * .85, {rot: Math.sin(trip * 30) * .05}); }
-      else if (jump != null) { const k = clamp(jump / .45, 0, 1), y = Math.sin(Math.PI * k) * l.h * 1.05; if (k < .5) spr('pug_jump', l.px, l.gy + 4 - y, l.h, {rot: -.15 + k * .3}); else sfDraw(SEQ.pugs[2], l.px, l.gy + 4 - y, l.h, {flip: true, rot: .05 + (k - .5) * .2}); }
+      else if (jump != null) { const k = clamp(jump / .45, 0, 1), y = jy * l.h * 1.05; if (k < .5) spr('pug_jump', l.px, l.gy + 4 - y, l.h, {rot: -.15 + k * .3}); else sfDraw(SEQ.pugs[2], l.px, l.gy + 4 - y, l.h, {flip: true, rot: .05 + (k - .5) * .2}); }
       else {
         let step = null; for (const q of qs) if (q.snd === 'ta' && now >= q.t && now - q.t < .16) step = now - q.t;
         const hop = ta >= 0 && ta < .25 ? Math.sin(Math.PI * ta / .25) * l.h * .3 : 0, h2 = step != null ? .25 + step / .16 * .5 : ((now / spb * 2) % 1 + 1) % 1, b = Math.abs(Math.sin(h2 * Math.PI)) * (step != null ? 18 : 10);
@@ -397,24 +405,28 @@ const SCENES = {
 };
 const SCN_KEYS = Object.keys(SCENES);
 
-function buildCue(st, spb) {
+function buildCue(st, spb, phase) {
   const rng = RNG(hash(st.id) + 5), segs = [], cues = [], notes = []; let b = 8;
   const put = (g, lvl, practice, pi = 0) => {
     const P = SCENES[g].pats, ok = P.filter(p => p.lvl <= lvl), top = ok.filter(p => p.lvl === Math.max(...ok.map(x => x.lvl)));
     const p = practice ? P[pi] : (rng() < .6 ? pick(rng, top) : pick(rng, ok));
     const hole = Math.floor(rng() * 3), grp = cues.length;
     const pc = p.c.map(([x, snd, d]) => ({t: (b + x) * spb, g, snd, dur: (d || 0) * spb, hole, grp, midi: g === 'pig' ? pick(rng, [64, 67, 69, 72, 74]) : 0}));
-    p.h.forEach(([x, d, ci, tr], k) => { if (ci == null) ci = p.c.length === p.h.length ? k : 0; notes.push({t: (b + x) * spb, dur: (d || 0) * spb, g, practice, hole, k, cueT: pc[ci].t, midi: pc[ci].midi, trap: !!tr}); });
+    p.h.forEach(([x, d, ci, tr], k) => { if (ci == null) ci = p.c.length === p.h.length ? k : 0; notes.push({t: (b + x) * spb, dur: (d || 0) * spb, g, practice, hole, k, cueT: pc[ci].t, midi: pc[ci].midi, trap: !!tr, grp, snd: pc[ci].snd}); });
     cues.push(...pc); b += p.len;
   };
-  if (!st.remix) {
-    const gs = st.games, one = gs.length === 1;
-    gs.forEach((g, i) => { segs.push({b0: i ? b : 0, g, label: 'れんしゅう'}); const P = SCENES[g].pats, tp = P.findIndex(p => p.h.some(h => h[3])); put(g, 0, true, 0); if (one) put(g, 0, true, tp > 0 ? tp : 0); });
+  if (phase === 'practice') {
+    const g = st.games[0], P = SCENES[g].pats, tp = P.findIndex(p => p.h.some(h => h[3]));
+    segs.push({b0: 0, g, label: 'れんしゅう'});
+    for (const k of [0, 0, 1, 1, 0, 1, 0, 1, 0, 1]) put(g, 0, true, k && tp > 0 ? tp : 0);
+  } else if (!st.remix) {
+    const gs = st.games, one = gs.length === 1, solo = one && phase === 'main';
+    if (!solo) gs.forEach((g, i) => { segs.push({b0: i ? b : 0, g, label: 'れんしゅう'}); const P = SCENES[g].pats, tp = P.findIndex(p => p.h.some(h => h[3])); put(g, 0, true, 0); if (one) put(g, 0, true, tp > 0 ? tp : 0); });
     let last = null;
     const N = SCENES[gs[0]].pats[0].len === 8 ? 6 : 12;
     for (let i = 0; i < N; i++) {
       const g = gs[Math.floor(i / 2) % gs.length], r = i / N;
-      if (i === 0) { segs.push({b0: b, g, label: 'ほんばん！'}); b += 4; } else if (g !== last) segs.push({b0: b, g, label: ''});
+      if (i === 0) { if (solo) segs.push({b0: 0, g, label: ''}); segs.push({b0: solo ? 8 : b, g, label: 'ほんばん！'}); if (!solo) b += 4; } else if (g !== last) segs.push({b0: b, g, label: ''});
       last = g; put(g, r < .3 ? 0 : r < .65 ? 1 : 2, false);
     }
   } else {
@@ -423,6 +435,7 @@ function buildCue(st, spb) {
   }
   b += 4;
   notes.sort((x, y) => x.t - y.t);
+  if (phase !== 'practice') { const fn = notes.filter(n => !n.practice && !n.trap).pop(); if (fn) fn.fin = true; }
   return {segs, cues, notes, mainBars: Math.ceil((b - 8) / 4)};
 }
 
@@ -440,7 +453,7 @@ MODES.cue = {
     const n = findNote(() => true, t), g = n ? n.g : this.seg(now).g, TAP = {capy: 'woosh', frog: 'lick', mole: 'woosh', puffer: 'psh', bulldog: 'woosh', hurdle: 'woosh', penguin: 'woosh', sumo: 'woosh', dance: 'heyp'}; G.tapN = (G.tapN || 0) + 1;
     if (TAP[g]) sfxK(TAP[g]);
     if (n && n.trap) { n.res = 'MISS'; n.bonk = true; n.hitT = now; const p = this.pos(n); record('MISS', p[0], p[1], null, n.practice); sfxK('bonk'); G.shake = performance.now(); return; }
-    if (n) { const p = this.pos(n); hit(n, t, p[0], p[1]); SCENES[n.g].hitSfx(n); if (n.dur) { n.holding = id; voiceStart(); } }
+    if (n) { const p = this.pos(n); hit(n, t, p[0], p[1]); SCENES[n.g].hitSfx(n); if (n.fin) { G.finT = performance.now(); G.shake = G.finT; sfxK('kira'); } if (n.dur) { n.holding = id; voiceStart(); } }
     else { if (g === 'pig') sfxK('oink', 67); else if (g === 'sloth') { voiceStart(); this.fake = id; } }
   },
   up(id, e) {
@@ -451,6 +464,21 @@ MODES.cue = {
       const p = this.pos(n); record(jres(dt) || 'MISS', p[0], p[1], dt, n.practice);
     }
   },
+  practice(now, top) {
+    if (!G.pClear) {
+      G.pEval = G.pEval || {}; const by = {};
+      for (const n of G.notes) (by[n.grp] = by[n.grp] || []).push(n);
+      for (const k of Object.keys(by).map(Number).sort((a, b) => a - b)) {
+        if (G.pEval[k]) continue; const ns = by[k]; if (!ns.every(n => n.res && now - n.hitT > .2)) break;
+        G.pEval[k] = 1; const ok = ns.every(n => n.res !== 'MISS'); G.pStreak = ok ? (G.pStreak || 0) + 1 : 0; if (ok && ns.some(n => n.trap)) G.pTrap = 1; G.pMsg = {ok, t: now};
+      }
+      const needT = SCENES[G.c.stage.games[0]].pats.some(p => p.h.some(h => h[3]));
+      if ((G.pStreak || 0) >= 2 && (!needT || G.pTrap)) { G.pClear = now; sfxK('kira'); const st = G.c.stage, me = G; setTimeout(() => { if (G === me && !G.over) { G.over = true; startStage(st, {phase: 'main'}); } }, 1500); }
+    }
+    const m = G.pMsg; if (m && now - m.t < .8 && !G.pClear) text(m.ok ? 'いいね！' : 'もういっかい！', W / 2, H * .3, 30, '#fff', {stroke: 6, sc: m.ok ? '#4fb3a9' : '#e8554e', a: 1 - (now - m.t) / .8});
+    for (let i = 0; i < 2; i++) circle(W / 2 - 14 + i * 28, top + 80, 9, i < (G.pStreak || 0) ? '#4fb3a9' : '#fff', INK, 2.5);
+    if (G.pClear) text('OK！ ほんばんいくよ！', W / 2, H * .3, 30, '#fff', {stroke: 7, sc: '#4fb3a9'});
+  },
   draw(now) {
     const s = this.seg(now), sc = SCENES[s.g];
     sc.draw(now);
@@ -460,12 +488,14 @@ MODES.cue = {
     if (lb === 'れんしゅう' || lb === 'ほんばん！') text(lb, W / 2, top + 6, 22, lb === 'ほんばん！' ? '#e8554e' : INK, {stroke: 5, sc: '#fff', a: lb === 'ほんばん！' ? clamp(2 - la / 2, 0, 1) : 1});
     else if (lb && la < 4) { text(lb, W / 2, H * .42, 36, '#fff', {stroke: 7, a: clamp(1 - (la - 2) / 2, 0, 1)}); }
     if (lb === 'れんしゅう') {
-      text(sc.guide, W / 2, top + 36, 15, INK, {stroke: 4, sc: '#fff', w: 700});
+      sc.guide.split('！ ').forEach((s, i, A) => text(s + (i < A.length - 1 ? '！' : ''), W / 2, top + 34 + i * 20, 15, INK, {stroke: 4, sc: '#fff', w: 700}));
       for (const n of G.notes) if (n.practice && now > n.t - .12 && now < n.t + .25) text(n.trap ? 'まって！' : 'いま！', W / 2, H * .45, 52, '#e8554e', {stroke: 7, sc: '#fff'});
     }
     const ra = (performance.now() - G.react.t) / 1000;
     const ex = ra < .7 && G.react.res ? (G.react.res === 'MISS' ? 'cry' : 'smile') : (lb === 'ほんばん！' && la < 2 ? 'surprise' : 'angry');
     drawFace(sc.char, ex, 46, H - 46 - SAT * 0, 34);
+    if (G.finT) { const fa = (performance.now() - G.finT) / 1000; if (fa < 1.4) { ctx.globalAlpha = Math.max(0, .5 - fa); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; text('キマった！', W / 2, H * .36, 44 * (1 + .3 * Math.max(0, spring(fa))), '#fff', {stroke: 8, sc: '#e8554e', a: clamp(1.4 - fa, 0, 1)}); } }
+    if (G.c.phase === 'practice') this.practice(now, top);
     drawFx();
   }
 };
@@ -528,14 +558,27 @@ function nextTalk() {
   $('#tFace').src = FACES[id + '_' + ex]; $('#tName').textContent = CH(id).name; $('#tText').textContent = tx;
 }
 $('#talk').addEventListener('click', nextTalk);
-function startStage(st) {
-  playStage = st; initAudio();
+function startStage(st, o = {}) {
+  playStage = st; initAudio(); $('#skipBtn').style.display = 'none';
   if (st.kind === 'note') { const c = Object.assign({}, CH(st.char), {stage: st}); current = CH(st.char); return startGame(c); }
-  const c = {id: st.char, name: stageName(st), mode: 'cue', cue: true, bpm: st.bpm, scale: st.scale, root: st.root, wave: st.wave, density: 1, bg: st.bg, lenient: 1.15, leadVol: .35, stage: st};
+  const c = {id: st.char, name: stageName(st), mode: 'cue', cue: true, bpm: st.bpm, scale: st.scale, root: st.root, wave: st.wave, density: 1, bg: st.bg, lenient: 1.15, leadVol: .35, stage: st, phase: o.phase || (st.games.length === 1 && !st.remix ? 'practice' : 'main')};
+  if (G && !G.over) G.over = true;
   startGame(c);
+  if (c.phase === 'practice') { const b = $('#skipBtn'); b.style.display = 'block'; b.onclick = () => { G.over = true; startStage(st, {phase: 'main'}); }; }
+}
+function judgeLines() {
+  const R = G.notes.filter(n => !n.practice), traps = R.filter(n => n.trap), bonk = traps.filter(n => n.bonk).length, half = R.length / 2;
+  const m1 = R.slice(0, half).filter(n => n.res === 'MISS').length, m2 = R.slice(half).filter(n => n.res === 'MISS').length, L = [];
+  if (G.cnt.MISS === 0) L.push('ノーミス！ リズム感バツグンだ'); 
+  if (bonk) L.push(`引っかけに${bonk}回つられたね`); else if (traps.length) L.push('引っかけはカンペキ！');
+  if (G.fast >= 3 && G.fast > G.slow * 2) L.push('ちょっと走りぎみ。もう少しガマン'); else if (G.slow >= 3 && G.slow > G.fast * 2) L.push('ちょっともたついてる。半歩はやく');
+  if (m2 >= m1 + 2) L.push('後半ちょっとバテた？'); else if (m1 >= m2 + 2) L.push('後半は持ち直した！');
+  if (R.find(n => n.fin && n.res && n.res !== 'MISS')) L.push('ラストもキメた！');
+  return L.slice(0, 2);
 }
 function storyFinish() {
   const st = G.c.stage, sc = G.score, i = STAGES.indexOf(st);
+  if (G.c.phase === 'practice') return startStage(st, {phase: 'practice'});
   const v = sc >= 850000 ? 'high' : sc >= 600000 ? 'pass' : null;
   const free = !!st.free, firstClear = !free && v && prog() === i;
   if (free) { if (v) { const old = store.get('hb_medal_' + st.id, null); if (old !== 'high') store.set('hb_medal_' + st.id, v); } }
@@ -545,7 +588,7 @@ function storyFinish() {
   $('#rQuote').textContent = `${CH(who).name}「${v ? CH(who).say[0] : CH(who).say[1]}」`;
   $('#rRank').innerHTML = `<div class="verdict">${v === 'high' ? 'ハイレベル！' : v ? 'へいぼん' : 'もういっかい…'}</div>`;
   $('#rScore').textContent = '';
-  $('#rFc').innerHTML = G.cnt.MISS === 0 ? '<span class="fc">ノーミス！</span>' : `ミス ${G.cnt.MISS}回`;
+  $('#rFc').innerHTML = (G.cnt.MISS === 0 ? '<span class="fc">ノーミス！</span>' : `ミス ${G.cnt.MISS}回`) + `<div style="margin-top:8px;padding:8px 12px;background:#fff;border:3px solid #3b2f2a;border-radius:12px;font-size:14px;text-align:left"><b>審査員パグ太</b><br>${judgeLines().join('<br>') || 'まずまずのデキ！'}</div>`;
   $('#rStats').innerHTML = ['PERFECT', 'GREAT', 'GOOD', 'MISS'].map(k => `<div style="color:${JCOL[k]}">${k}<b>${G.cnt[k]}</b></div>`).join('');
   $('#rBest').textContent = v ? '' : '6割以上でクリア';
   $('#rJoin').innerHTML = firstClear && st.part ? `<div class="jt">🎉 ${CH(st.char).name}が${st.part}担当で加入！</div>` : v && st.id === 'fin' ? `<img src="${ACTS.lineup}" style="width:100%;max-width:420px;height:auto" alt=""><div class="jt">🎉 はちまきバンド、ライブ大成功！</div>` : '';

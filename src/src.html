@@ -111,6 +111,7 @@ input[type=range]{width:100%;accent-color:var(--red)}
 <div id="play" class="screen">
   <canvas id="cv"></canvas>
   <button class="iconbtn" id="pauseBtn" aria-label="一時停止">❚❚</button>
+  <button class="btn sm" id="skipBtn" style="position:absolute;right:12px;top:calc(var(--sat) + 10px);z-index:5;display:none">スキップ ▶</button>
 </div>
 
 <div id="result" class="screen paper">
@@ -235,7 +236,7 @@ function genSong(c) {
       if (bar.i === 1) { add(b0 + 2, 'kick'); add(b0 + 2, 'snare'); }
     } else {
       if (bar.i % 2 === 0) drPat = pick(rng, drPool);
-      let [ks, ss] = c.cue ? [[0, 1, 2, 3], [1, 3]] : drPat;
+      let [ks, ss] = c.cue ? [[0, 2, 2.5], [1, 3]] : drPat;
       if (bar.i === 7 && c.density > 0) { ks = c.cue ? [0, 1, 2] : [0, 2]; ss = [1, 2.5, 3, 3.25, 3.5, 3.75]; }
       ks.forEach(x => add(b0 + x, 'kick', {chart: true}));
       ss.forEach(x => add(b0 + x, 'snare', {chart: true}));
@@ -247,7 +248,8 @@ function genSong(c) {
     // bass + chord
     const bassRoot = degMidi(c.root - 24, sc, bar.chord);
     if (bar.sec !== 'outro' || bar.i === 0) {
-      if (c.cue || c.density >= 1) { for (let k = 0; k < 8; k++) add(b0 + k / 2, 'bass', {midi: bassRoot + (k % 2 ? 12 : 0) + (k === 7 && bar.i % 2 ? 7 : 0), len: .45 * spb}); }
+      if (c.cue) [[0, 0], [.75, 12], [1.5, 0], [2, 0], [2.75, 12], [3.5, 7]].forEach(([p, o]) => add(b0 + p, 'bass', {midi: bassRoot + o, len: .4 * spb}));
+      else if (c.density >= 1) { for (let k = 0; k < 8; k++) add(b0 + k / 2, 'bass', {midi: bassRoot + (k % 2 ? 12 : 0) + (k === 7 && bar.i % 2 ? 7 : 0), len: .45 * spb}); }
       else [[0, 1], [1.5, .5], [2, 1], [3, 1]].forEach(([p, l]) => add(b0 + p, 'bass', {midi: bassRoot, len: l * spb}));
       add(b0, 'chord', {midis: [0, 2, 4].map(x => degMidi(c.root - 12, sc, bar.chord + x)), len: 4 * spb});
     } else {
@@ -255,7 +257,7 @@ function genSong(c) {
       add(b0, 'bass', {midi: degMidi(c.root - 24, sc, 0), len: 3 * spb});
     }
     // lead
-    if (main) {
+    if (main && !(c.cue && bar.i % 2 === 0)) {
       let notes;
       if (c.mode === 'simon') {
         if (bar.i % 2 === 0) { notes = genBar(rng, c, sc, bar.chord, st, false); memo.last = notes; barType[bi] = 'call'; }
@@ -410,7 +412,7 @@ function startGame(c) {
   initAudio();
   let song, notes, cs = null;
   if (c.mode === 'cue') {
-    cs = buildCue(c.stage, 60 / c.bpm); c.mainBars = cs.mainBars;
+    cs = buildCue(c.stage, 60 / c.bpm, c.phase); c.mainBars = cs.mainBars;
     song = genSong(c); notes = cs.notes;
     for (const q of cs.cues) song.ev.push({t: q.t, b: q.t / song.spb, type: 'cue', snd: q.snd, dur: q.dur, midi: q.midi});
     song.ev.sort((a, b) => a.t - b.t);
@@ -534,6 +536,7 @@ function drawHUD(now) {
   G.pops = G.pops.filter(p => pt - p.t < 550);
   for (const p of G.pops) {
     const a = (pt - p.t) / 550;
+    if (G.c.mode === 'cue') { if (p.res === 'GOOD') text('おしい', p.x, p.y - 20 - a * 30, 22, '#c98b4f', {stroke: 5, sc: '#fff', a: 1 - a * a}); continue; }
     text(p.res, p.x, p.y - 20 - a * 30, 24, JCOL[p.res], {stroke: 5, sc: '#fff', a: 1 - a * a});
     if (p.tag) text(p.tag, p.x, p.y + 6 - a * 30, 13, p.tag === 'FAST' ? '#4a8fd6' : '#e8554e', {stroke: 4, sc: '#fff', a: 1 - a * a});
   }
