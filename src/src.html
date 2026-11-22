@@ -86,7 +86,7 @@ input[type=range]{width:100%;accent-color:var(--red)}
 <body>
 <div id="title" class="screen paper on">
   <h1>はちまき<br>ビート</h1>
-  <p>10匹の相棒と、10通りのリズム</p>
+  <p>赤組10匹の、リズム運動会</p>
   <div class="parade" id="parade"></div>
   <button class="btn" id="startBtn">ストーリー</button>
   <button class="btn sub sm" id="freeBtn">フリープレイ</button>
@@ -99,7 +99,7 @@ input[type=range]{width:100%;accent-color:var(--red)}
 </div>
 
 <div id="story" class="screen paper">
-  <header style="display:flex;align-items:center;gap:12px;padding:calc(var(--sat) + 12px) 16px 6px"><button class="iconbtn" id="stBack" aria-label="もどる">←</button><h2 style="margin:0;font-size:22px">はちまきバンド結成記</h2></header>
+  <header style="display:flex;align-items:center;gap:12px;padding:calc(var(--sat) + 12px) 16px 6px"><button class="iconbtn" id="stBack" aria-label="もどる">←</button><h2 style="margin:0;font-size:22px">赤組の運動会</h2></header>
   <div id="band"></div>
   <div class="slist" id="slist"></div>
 </div>
@@ -486,7 +486,7 @@ function update(now) {
       if (G.c.mode === 'cue') sfxK('boo');
     }
     if (G.c.mode === 'cue') {
-      if (n.holding != null && !n.tailDone && now > n.t + n.dur + G.W.o) { n.tailDone = true; n.holding = null; voiceStop(); const p = MODES.cue.pos(n); record('MISS', p[0], p[1], null, n.practice); }
+      if (n.holding != null && !n.tailDone && now > n.t + n.dur + G.W.o) { n.tailDone = true; n.holding = null; n.tailRes = 'MISS'; n.relT = now; n.relEarly = false; voiceStop(); const p = MODES.cue.pos(n); record('MISS', p[0], p[1], null, n.practice); }
       continue;
     }
     if (n.holding != null && !n.tailDone && now >= n.t + n.dur) {
