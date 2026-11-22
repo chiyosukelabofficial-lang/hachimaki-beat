@@ -93,9 +93,11 @@ const SCENES = {
     pos() { const l = this.L(); return [l.cx, l.hy - 40]; }, cuePos() { return [W * .18, H * .5]; }, hitSfx() { sfxK('suzu'); },
     cap(now, l, ta) {
       const C = SEQ.capy, x = l.cx, yb = l.wy + l.h * .3, p = charPose(now);
-      if (missing()) { const ra = reactAge(); seqPlay(C, [[5, 0]], 0, x, yb + 4, l.h, {rot: Math.sin(ra * 22) * .05 * (1 - ra / .75)}); return; }
-      if (ta >= 0 && ta < .4) { const up = Math.sin(Math.PI * clamp((ta - .04) / .23, 0, 1)) * l.h * .2; seqPlay(C, [[1, 0], [3, .05], [4, .27], [0, .38]], ta, x, yb - up, l.h); return; }
-      seqPlay(C, [[0, 0]], 0, x, yb, l.h, {sx: p.sx, sy: p.sy, rot: p.rot});
+      if (missing()) { const ra = reactAge(); seqPlay(C, [[5, 0]], 0, x, yb + 4, l.h, {flip: true, rot: Math.sin(ra * 22) * .05 * (1 - ra / .75)}); return; }
+      if (ta >= 0 && ta < .4) { const up = Math.sin(Math.PI * clamp((ta - .04) / .23, 0, 1)) * l.h * .2; seqPlay(C, [[1, 0], [3, .05], [4, .27], [0, .38]], ta, x, yb - up, l.h, {flip: true}); return; }
+      const ra = reactAge();
+      if (G.react.res && G.react.res !== 'MISS' && ra >= .38 && ra < .9) { const hop = Math.sin(Math.PI * clamp((ra - .38) / .5, 0, 1)) * l.h * .1; sfDraw(SEQ.capyC[0], x, yb - hop, l.h * .98); return; }
+      seqPlay(C, [[0, 0]], 0, x, yb, l.h, {flip: true, sx: p.sx, sy: p.sy, rot: p.rot});
     },
     bucket(x, y, a) { ctx.save(); ctx.globalAlpha = a; ctx.beginPath(); ctx.moveTo(x - 24, y - 24); ctx.lineTo(x + 24, y - 24); ctx.lineTo(x + 19, y); ctx.lineTo(x - 19, y); ctx.closePath(); ctx.fillStyle = '#d39a5c'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke(); ctx.fillStyle = INK; ctx.fillRect(x - 22, y - 17, 44, 3); ctx.fillRect(x - 20, y - 8, 40, 3); ctx.restore(); },
     draw(now) {
@@ -117,7 +119,7 @@ const SCENES = {
   frog: {char: 'frog', title: 'ハエとり', guide: '「ブン、ブン」の次の拍でタップ',
     pats: [{lvl: 0, len: 4, c: [[0, 'buzz'], [1, 'buzz']], h: [[2]]}, {lvl: 1, len: 4, c: [[0, 'buzz2'], [.5, 'buzz2']], h: [[1]]}, {lvl: 2, len: 4, c: [[0, 'buzz'], [1, 'buzz'], [2.5, 'buzz2'], [3, 'buzz2']], h: [[2, 0, 0], [3.5, 0, 2]]}, {lvl: 2, len: 4, c: [[0, 'buzz2'], [.5, 'buzz2'], [2, 'buzz2'], [2.5, 'buzz2']], h: [[1, 0, 0], [3, 0, 2]]}],
     L() { const h = Math.min(H * .26, 220), fx = W * .3, fy = H * .72; return {h, fx, fy, mx: fx + h * .08, my: fy - h * .55}; },
-    tip(l) { const f = SEQ.tongue[3]; return sfPt(f, f.tip, l.fx, l.fy + 8, l.h); },
+    tip(l) { const f = SEQ.frogf[2]; return sfPt(f, f.tip, l.fx, l.fy + 8, l.h); },
     pos() { const l = this.L(); return [l.mx + 30, l.my - 60]; }, cuePos() { return [W * .8, H * .3]; }, hitSfx() { sfxK('gulp'); },
     fly(x, y) { ellipse(x - 5, y - 8, 9, 5, 'rgba(255,255,255,.8)', INK, 1.5); ellipse(x + 5, y - 8, 9, 5, 'rgba(255,255,255,.8)', INK, 1.5); circle(x, y, 7, '#333', INK, 2); },
     draw(now) {
@@ -126,10 +128,11 @@ const SCENES = {
       ctx.fillStyle = '#8fc2b8'; ctx.fillRect(0, H * .62, W, H); ctx.fillStyle = INK; ctx.fillRect(0, H * .62 - 1.5, W, 3);
       for (let i = 0; i < 6; i++) { ctx.strokeStyle = '#6d8f4e'; ctx.lineWidth = 4; const x = W * .62 + i * W * .07; ctx.beginPath(); ctx.moveTo(x, H * .64); ctx.quadraticCurveTo(x + 10, H * .5, x + Math.sin(now * 2 + i) * 6, H * .4 - i % 2 * 20); ctx.stroke(); }
       ellipse(l.fx, l.fy + 6, l.h * .55, l.h * .12, '#7cb35a', INK);
-      const act = (G.byG.frog || []).find(n => n.res && n.res !== 'MISS' && now - n.hitT < .5);
-      const TG = SEQ.tongue;
-      if (act) { const d = now - act.hitT, tp = this.tip(l); seqPlay(TG, [[2, 0], [3, .035], [4, .11], [5, .19], [6, .27], [7, .4]], d, l.fx, l.fy + 8, l.h, {fade: .045}); if (d < .11) this.fly(tp[0], tp[1] - 2); }
-      else if (ta >= 0 && ta < .22 && !missing()) seqPlay(TG, [[2, 0], [3, .03], [2, .13], [0, .19]], ta, l.fx, l.fy + 8, l.h, {fade: .04});
+      const acts = (G.byG.frog || []).filter(n => n.res && n.res !== 'MISS' && now - n.hitT < .5), act = acts[acts.length - 1];
+      const FS = SEQ.frogf;
+      if (missing()) seqPlay(FS, [[6, 0], [7, .26]], reactAge(), l.fx, l.fy + 8, l.h, {fade: .06});
+      else if (act) { const d = now - act.hitT, tp = this.tip(l), lf = d > .12 && d < .3 ? Math.sin(Math.PI * (d - .12) / .18) * l.h * .1 : 0; seqPlay(FS, [[1, 0], [2, .035], [4, .12], [5, .3], [3, .42]], d, l.fx, l.fy + 8 - lf, l.h, {fade: .045}); if (d < .05) this.fly(tp[0], tp[1] - 2); }
+      else if (ta >= 0 && ta < .22) seqPlay(FS, [[1, 0], [0, .16]], ta, l.fx, l.fy + 8, l.h, {fade: .04});
       else actor('frog', l.fx, l.fy + 8, l.h, now, {lift: l.h * .14, tilt: -.12, dx: 10});
       for (const n of G.byG.frog || []) {
         if (now < n.cueT - .02) continue;
@@ -157,8 +160,9 @@ const SCENES = {
         const hitOk = n.res && n.res !== 'MISS';
         ctx.save(); ctx.beginPath(); ctx.rect(l.xs[n.hole] - l.rx * 1.3, 0, l.rx * 2.6, l.y); ctx.clip();
         const sq = hitOk ? 1 : 0, wob = !n.res ? spring(now - n.t + .3) * .05 : 0;
-        if (n.res) { ctx.restore(); const d = now - n.hitT, sp = Math.max(0, spring(d)); seqPlay(SEQ.mole, sq ? [[0, 0]] : [[2, 0], [3, .1], [2, .2], [3, .3]], d, l.xs[n.hole], l.y + l.mh * .2, l.mh * .9, {sx: 1 + .1 * sp, sy: 1 - .1 * sp, fade: .04}); continue; }
-        spr('mole', l.xs[n.hole], l.y + l.mh * (1 - q) + l.mh * .1, l.mh, {sy: 1 - wob, sx: 1 + wob});
+        if (n.res) { ctx.restore(); const d = now - n.hitT, sp = Math.max(0, spring(d)); seqPlay(SEQ.moleP, sq ? [[2, 0]] : [[0, 0], [1, .22]], d, l.xs[n.hole], l.y + l.mh * .2, l.mh * .9, {sx: 1 + .1 * sp, sy: 1 - .1 * sp, fade: .05}); continue; }
+        if (q < .72) seqPlay(SEQ.mole2, [[1, 0], [2, .3], [3, .55]], q, l.xs[n.hole], l.y + l.mh * .2, l.mh * .9, {fade: .12});
+        else spr('mole', l.xs[n.hole], l.y + l.mh * (1 - q) + l.mh * .1, l.mh, {sy: 1 - wob, sx: 1 + wob});
         ctx.restore();
         if (hitOk) text('★', l.xs[n.hole] + 30, l.y - l.mh, 30, '#f2c12e', {stroke: 4});
       }
@@ -199,10 +203,10 @@ const SCENES = {
       const d = lastRes ? now - lastRes.hitT : 9, good = lastRes && lastRes.res !== 'MISS';
       let s = 1 + .12 * Math.min(cnt, 3);
       if (d < .4) s = good ? lerp(1.36, 1, d / .4) : 1.36 - .1 * Math.sin(d * 40);
-      const PF = SEQ.puffer;
-      if (lastRes && !good && d < .7) seqPlay(PF, [[1, 0]], 0, l.cx, l.cy + l.h * .2, l.h * 1.1, {rot: Math.sin(d * 25) * .06});
-      else if (good && d < .45) seqPlay(PF, [[4, 0], [0, .32]], d, l.cx - 40 * Math.max(0, spring(d)), l.cy + l.h * .15, l.h * 1.05, {fade: .08});
-      else seqPlay(PF, [[0, 0], [2, .5], [3, 1.5]], cnt >= 3 ? 2 : cnt >= 2 ? 1 : 0, l.cx, l.cy + l.h * .15 * s, l.h * (1 + .03 * Math.min(cnt, 3)), {sx: p.sx * (1 + .06 * Math.max(0, spring(tapAge(now)))), sy: p.sy, fade: .5});
+      const PF = SEQ.puff2, gy = H * .86 + 8, hh = l.h * .95; this._pv = (this._pv || 0) + (Math.min(cnt, 3) - (this._pv || 0)) * .25;
+      if (lastRes && !good && d < .7) seqPlay(PF, [[8, 0], [7, .35]], d, l.cx, gy, hh, {fade: .06});
+      else if (good && d < .5) seqPlay(PF, [[6, 0], [0, .38]], d, l.cx - 30 * Math.max(0, spring(d)), gy, hh, {fade: .1});
+      else seqPlay(PF, [[0, 0], [1, .9], [3, 1.9], [5, 2.9]], this._pv, l.cx, gy, hh, {sx: p.sx * (1 + .05 * Math.max(0, spring(tapAge(now)))), sy: p.sy, fade: .6});
       if (good && d < .6) for (let k = 0; k < 7; k++) circle(l.cx + l.h * .4 + d * 400 + k * 18, l.cy - l.h * .4 + Math.sin(k * 2 + d * 10) * 14, 6 + k % 3 * 3, 'rgba(255,255,255,.6)', INK, 2);
     }},
   sloth: {char: 'sloth', title: 'の〜び合わせ', guide: '「の〜〜」と同じ長さだけ押しっぱなし',
@@ -218,8 +222,11 @@ const SCENES = {
       let b = 0; for (const n of G.byG.sloth || []) { if (n.holding != null) b = clamp((now - n.t) / n.dur, 0, 1.2); }
       const SL = SEQ.sloth, hg = SL[1], sy1 = 1 + .3 * a;
       sfDraw(hg, l.ax, H * .2 - 4 + l.h * hg.hr * sy1, l.h, {sy: sy1, sx: p.sx});
-      if (missing()) seqPlay(SL, [[4, 0]], 0, l.bx, l.y + 6, l.h * .95, {flip: true, rot: Math.sin(reactAge() * 20) * .04});
-      else seqPlay(SL, [[0, 0], [2, .08], [3, .5]], b, l.bx, l.y + 6, l.h, {flip: true, sx: p.sx * (1 + .08 * spring(reactAge())), sy: (1 + .1 * Math.min(b, 1)) * (1 - .08 * spring(reactAge())), rot: p.rot + Math.sin(now * 20) * .02 * b, fade: .07});
+      const SC = SEQ.slothc, ra = reactAge();
+      if (missing()) seqPlay(SC, [[5, 0]], 0, l.bx, l.y + 6, l.h, {flip: true, rot: Math.sin(ra * 20) * .03});
+      else if (b > 0) seqPlay(SC, [[1, 0], [2, 1], [3, 2], [4, 3]], (now * 4) % 4, l.bx, l.y + 6, l.h, {flip: true, rot: Math.sin(now * 20) * .015, fade: .3});
+      else if (G.react.res && G.react.res !== 'MISS' && ra < .9) sfDraw(SEQ.slothT[0], l.bx, l.y + 6 - Math.max(0, spring(ra)) * 10, l.h, {flip: true});
+      else seqPlay(SC, [[0, 0]], 0, l.bx, l.y + 6, l.h, {flip: true, sx: p.sx, sy: p.sy, rot: p.rot});
       if (b > 0) text('の〜〜', l.bx, l.y - l.h * (1 + .35 * b) - 20, 22, '#fff', {stroke: 5, sc: '#8a6a4a'});
     }},
   bulldog: {char: 'bulldog', title: 'どすこい張り手', guide: '弟子の「ハッ！」の2拍あとにタップ',
@@ -265,7 +272,7 @@ const SCENES = {
         this.hd(x, l.gy, rot, a);
       }
       if (trip != null) spr('pug_trip', l.px, l.gy + 8, l.h * .85, {rot: Math.sin(trip * 30) * .05});
-      else if (jump != null) { const y = Math.sin(Math.PI * clamp(jump / .45, 0, 1)) * l.h * 1.0; seqPlay(SEQ.pugs, [[1, 0], [2, .13], [3, .34]], jump, l.px, l.gy + 4 - y, l.h, {rot: -.1 + jump * .22, fade: .06}); }
+      else if (jump != null) { const y = Math.sin(Math.PI * clamp(jump / .45, 0, 1)) * l.h * 1.0; seqPlay(SEQ.pugs, [[1, 0], [2, .13], [3, .34]], jump, l.px, l.gy + 4 - y, l.h, {flip: true, rot: .1 - jump * .22, fade: .06}); }
       else { const hop = ta >= 0 && ta < .3 ? Math.sin(Math.PI * ta / .3) * l.h * .3 : 0, ph = ((now / G.song.spb) % 1 + 1) % 1; spr('pug_dash', l.px, l.gy + 4 - hop - Math.abs(Math.sin(ph * Math.PI * 2)) * 8, l.h, {sx: p.sx, sy: p.sy}); }
     }},
   penguin: {char: 'penguin', title: 'はらすべり', guide: '笛の「ピッ、ピッ」の次の拍でタップ',
@@ -286,11 +293,11 @@ const SCENES = {
         else if (n.res === 'MISS') { const d = now - n.hitT; if (d < .65) { fail = d; slide = null; this.fish(W * .78 + d * 300, l.gy - 10 - d * 200, d * 8); } }
         else { const d = now - n.hitT; if (d < .6) { slide = d; fail = null; } }
       }
-      const PG = SEQ.peng;
-      if (fail != null) seqPlay(PG, [[3, 0], [4, .28]], fail, l.px, l.gy + 6, l.h * .9, {rot: Math.sin(fail * 30) * .04, fade: .07});
+      const PG = SEQ.pengn, PQ = SEQ.pengP;
+      if (fail != null) seqPlay(PQ, [[3, 0], [1, .24]], fail, l.px, l.gy + 6, l.h * .95, {rot: Math.sin(fail * 30) * .03, fade: .07});
       else if (slide != null) {
         const k = Math.sin(Math.PI * clamp(slide / .6, 0, 1)), x = l.px + k * W * .4;
-        seqPlay(PG, [[1, 0], [2, .1], [4, .3]], slide, x, l.gy + 8, l.h * .9, {fade: .07});
+        seqPlay(PG, [[2, 0], [3, .07], [4, .2], [5, .3], [6, .4], [0, .52]], slide, x, l.gy + 8, l.h * .95, {fade: .06});
         for (let i = 0; i < 6; i++) circle(x - l.h * .5 - i * 14, l.gy - 6 - Math.sin(i + slide * 20) * 10, 4, 'rgba(140,195,223,.8)', INK, 1.5);
       } else {
         const ph = ((now / G.song.spb) % 1 + 1) % 1, s = Math.max(0, spring(ta));
