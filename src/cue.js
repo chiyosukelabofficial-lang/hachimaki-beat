@@ -295,8 +295,9 @@ const SCENES = {
       {lvl: 1, len: 4, c: [[0, 'buon'], [2, 'hoi']], h: [[2, 0, 0], [3, 0, 1]]},
       {lvl: 1, len: 4, c: [[0, 'hoi'], [2, 'fake']], h: [[1, 0, 0], [3, 0, 1, 1]]},
       {lvl: 2, len: 4, c: [[0, 'hoi'], [2, 'hoi'], [2.5, 'hoi'], [3, 'hoi']], h: [[1, 0, 0], [3, 0, 1], [3.5, 0, 2], [4, 0, 3]]},
-      {lvl: 2, len: 4, c: [[0, 'hoi'], [.5, 'hoi'], [1, 'hoi'], [2, 'buon']], h: [[1, 0, 0], [1.5, 0, 1], [2, 0, 2], [4, 0, 3]]}],
-    chart: [0, 0, 0, 1, 0, 1, 3, 1, 2, 4, 2, 4, 5, 3, 4, 6],
+      {lvl: 2, len: 4, c: [[0, 'hoi'], [.5, 'hoi'], [1, 'hoi'], [2, 'buon']], h: [[1, 0, 0], [1.5, 0, 1], [2, 0, 2], [4, 0, 3]]},
+      {lvl: 2, len: 4, c: [[0, 'hoi'], [1, 'hoi'], [2.5, 'hoi']], h: [[1, 0, 0], [2, 0, 1], [3.5, 0, 2]]}],
+    chart: [0, 0, 0, 1, 0, 1, 3, 7, 2, 4, 7, 4, 0, 1, 0, 3, 5, 2, 4, 6], dark: [12, 16],
     practice: [0, 0, 0, 1, 4, 1, 4, 3, 2, 4, 0, 4],
     L() { const gy = H * .74, h = Math.min(H * .21, 170, W * .44); return {gy, h, bx: W * .19, xs: [W * .66, W * .8, W * .93]}; },
     hp(l) { return [l.bx + l.h * .55, l.gy - l.h * .55]; },
@@ -311,7 +312,7 @@ const SCENES = {
       ellipse(l.bx, l.gy + 30, W * .3, 22, null, '#f6efe0', 5);
       const TH = ['pug', 'pig', 'frog'];
       for (let i = 0; i < 3; i++) {
-        let s = 0, fk = false; for (const q of qs) { if ((q.i || 0) % 3 !== i) continue; const d = now - q.t; if (d > -.12 && d < .3) { s = d < 0 ? -(d + .12) / .12 : Math.max(0, spring(d)); fk = q.snd === 'fake'; } }
+        let s = 0, fk = false; for (const q of qs) { if ((q.i || 0) % 3 !== i) continue; const d = now - q.t, wu = G.song.spb * .5; if (d > -wu && d < .3) { s = d < 0 ? -(1 + d / wu) : Math.max(0, spring(d)); fk = q.snd === 'fake'; } }
         const th = 40 + i * l.h * .55; ctx.fillStyle = '#a8784a'; ctx.fillRect(l.xs[i] - 22, l.gy - th, 44, th); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.strokeRect(l.xs[i] - 22, l.gy - th, 44, th);
         spr(TH[i], l.xs[i], l.gy - th + 2 - (s > 0 ? s * 18 : 0), l.h * .42, {flip: true, sx: 1 + (s < 0 ? -s * .1 : -s * .06), sy: 1 + (s < 0 ? s * .12 : s * .1), rot: fk ? Math.sin(now * 30) * .08 * Math.abs(s) : s * -.15});
       }
@@ -327,9 +328,18 @@ const SCENES = {
       const BU = SEQ.bulls, bonk = ns.find(n => n.bonk && now - n.hitT < .7), hurt = ns.find(n => !n.trap && n.res === 'MISS' && now - n.hitT < .6);
       if (hurt) seqPlay(BU, [[3, 0]], 0, l.bx, l.gy + 6, l.h * .9, {flip: true, rot: Math.sin(ra * 24) * .05});
       else if (ta >= 0 && ta < .26) seqPlay(BU, [[1, 0], [2, .04], [0, .2]], ta, l.bx + Math.sin(Math.PI * clamp(ta / .2, 0, 1)) * 18, l.gy + 6, l.h * .9, {flip: true, fade: .035});
-      else seqPlay(BU, [[0, 0]], 0, l.bx, l.gy + 6, l.h * .9, {flip: true, sy: 1 - .03 * Math.exp(-ph * 5)});
+      else { const up = ns.find(n => !n.res && !n.trap && n.t > now && n.t - now < G.song.spb * .6), k = up ? 1 - (up.t - now) / (G.song.spb * .6) : 0;
+        seqPlay(BU, [[0, 0]], 0, l.bx - 8 * k, l.gy + 6, l.h * .9, {flip: true, sy: (1 - .03 * Math.exp(-ph * 5)) * (1 - .09 * k), sx: 1 + .05 * k, rot: -.08 * k}); }
       if (bonk) text('スカッ', hp[0], hp[1] - 50, 24, '#fff', {stroke: 5, sc: '#8a8a80', a: 1 - (now - bonk.hitT) / .7});
       if (hurt) text('いてっ', l.bx, l.gy - l.h * 1.05, 24, '#fff', {stroke: 5, sc: '#8a6a4a'});
+      if (G.c.phase === 'main' && this.dark) { const spb = G.song.spb, d0 = (8 + this.dark[0] * 4) * spb, d1 = (8 + this.dark[1] * 4) * spb;
+        this._dk = now > d0 && now < d1;
+        if (now > d0 - .05 && now < d1 + .4) { const a = now < d0 + .08 ? clamp((now - d0 + .05) / .13, 0, 1) : now > d1 ? 1 - (now - d1) / .4 : 1;
+          ctx.globalAlpha = a * .94; ctx.fillStyle = '#120e1a'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
+          for (const [x, y] of [[l.bx + l.h * .12, l.gy - l.h * .62], [l.bx + l.h * .28, l.gy - l.h * .62]]) circle(x, y, 5, `rgba(255,255,255,${a})`);
+          if (now - d0 < 1.2) text('停電だ！', W / 2, H * .3, 34, '#fff', {stroke: 7, sc: '#3b2f4a', a: clamp(1.2 - (now - d0), 0, 1)});
+          if (now > d1 && now - d1 < 1) text('ついた！', W / 2, H * .3, 30, '#fff', {stroke: 6, sc: '#f2c12e', a: 1 - (now - d1)}); }
+        if (Math.abs(now - d0) < .02 && !this._bz) { this._bz = 1; sfxK('bonk'); } if (now > d1) this._bz = 0; }
     }},
   hurdle: {char: 'pug', title: 'パグ太ダッシュ', guide: '「タン、タン」と助走したら次でジャンプ！ 「ワン！」は跳ばずにホネをパクッ',
     pats: [{lvl: 0, len: 4, c: [[0, 'ta'], [.5, 'ta'], [2, 'ta'], [2.5, 'ta']], h: [[1, 0, 0], [3, 0, 2]]},
@@ -556,7 +566,7 @@ MODES.cue = {
     const s = this.seg(now), sc = SCENES[s.g];
     sc.draw(now);
     const top = SAT + 54;
-    for (const q of G.cuesByG[s.g] || []) { const d = now - q.t; if (d < 0 || d > .45) continue; const [x, y] = sc.cuePos(q); text(CUELBL[q.snd], x, y - d * 30, 30, '#fff', {stroke: 6, a: 1 - d / .45}); }
+    if (!sc._dk) for (const q of G.cuesByG[s.g] || []) { const d = now - q.t; if (d < 0 || d > .45) continue; const [x, y] = sc.cuePos(q); text(CUELBL[q.snd], x, y - d * 30, 30, '#fff', {stroke: 6, a: 1 - d / .45}); }
     const lb = s.label, la = now / G.song.spb - s.b0;
     if (lb === 'れんしゅう' || lb === 'ほんばん！') text(lb, W / 2, top + 6, 22, lb === 'ほんばん！' ? '#e8554e' : INK, {stroke: 5, sc: '#fff', a: lb === 'ほんばん！' ? clamp(2 - la / 2, 0, 1) : 1});
     else if (lb && la < 4) { text(lb, W / 2, H * .42, 36, '#fff', {stroke: 7, a: clamp(1 - (la - 2) / 2, 0, 1)}); }
