@@ -60,7 +60,7 @@ function sfxK(k, midi) {
   else if (k === 'heyp') { tone('sawtooth', 520, w, .15, .18, {to: 720, toT: .06, lp: 2000}); }
   else if (k === 'don') { tone('sine', 120, w, .2, .9, {to: 60, perc: 1}); noiseHit(w, .05, .3, 500); }
 }
-const CUELBL = {pon: 'ポン', goro: 'ゴロッ', kira: 'キラッ', gon: 'ゴンッ', wan: 'ワン！', kakon: 'カコン', buzz: 'ブン', buzz2: 'ブッ', poko: 'ポコ', oink: 'ブー', suu: 'スッ', noo: 'の〜〜', ha: 'ハッ！', ta: 'タッ', pi: 'ピッ', hk1: 'ハッ', hk2: 'ケ', hk3: 'ヨイ', hey: 'ヘイ！'};
+const CUELBL = {pon: 'ポン', goro: 'ゴロッ', kira: 'キラッ', gon: 'ゴンッ', wan: 'ワン！', kakon: 'カコン', buzz: 'ブン', buzz2: 'ブッ', poko: 'ポコ', oink: 'ブー', suu: 'スッ', noo: 'の〜〜', ha: 'ハッ！', ta: 'タン', pi: 'ピッ', hk1: 'ハッ', hk2: 'ケ', hk3: 'ヨイ', hey: 'ヘイ！'};
 const SEQ = __SEQ__;
 function sfDraw(f, x, yb, h, o = {}) {
   const im = IM[f.k]; if (!im || !im.complete || !im.naturalWidth) return;
@@ -278,7 +278,7 @@ const SCENES = {
       if (push > .3 && (G.byG.bulldog || []).some(n => n.res && n.res !== 'MISS' && now - n.hitT < .2)) text('バチン！', l.px - 20, l.y - l.h * 1.1, 26, '#fff', {stroke: 6, sc: '#e8554e'});
     }},
 
-  hurdle: {char: 'pug', title: 'パグ太ダッシュ', guide: '「タッ、タッ」の次でジャンプ！ 「ワン！」は跳ばずにホネをパクッ',
+  hurdle: {char: 'pug', title: 'パグ太ダッシュ', guide: '「タン、タン」と助走したら次でジャンプ！ 「ワン！」は跳ばずにホネをパクッ',
     pats: [{lvl: 0, len: 4, c: [[0, 'ta'], [.5, 'ta'], [2, 'ta'], [2.5, 'ta']], h: [[1, 0, 0], [3, 0, 2]]},
       {lvl: 1, len: 4, c: [[0, 'ta'], [.5, 'ta'], [2, 'wan']], h: [[1, 0, 0], [3, 0, 2, 1]]},
       {lvl: 1, len: 4, c: [[0, 'ta'], [1, 'ta'], [2.5, 'ta'], [3, 'ta']], h: [[2, 0, 0], [3.5, 0, 2]]},
@@ -297,8 +297,9 @@ const SCENES = {
       ctx.fillStyle = '#d9a06a'; ctx.fillRect(0, l.gy, W, H); ctx.fillStyle = INK; ctx.fillRect(0, l.gy - 1.5, W, 3);
       ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 4; for (let i = 0; i < 8; i++) { const x = ((i * 90 - now * V) % 720 + 720) % 720 - 45; ctx.beginPath(); ctx.moveTo(x, l.gy + 40); ctx.lineTo(x + 44, l.gy + 40); ctx.stroke(); }
       let jump = null, trip = null, munch = null;
+      const TO = l.px + l.h * .62, qs = G.cuesByG.hurdle || [];
       for (const n of ns) {
-        const x = l.px + (n.t - now) * V;
+        const x = (n.trap ? l.px + l.h * .45 : TO) + (n.t - now) * V;
         if (n.trap) {
           const by = l.gy - l.h * .42;
           if (n.bonk) { const d = now - n.hitT; if (d >= 0 && d < .45) { jump = d; trip = null; } if (x > -40 && x < W + 40) this.bone(x, by, 20, now * 8); if (now > n.t && now - n.t < .5) text('あっ…', l.px - 20, l.gy - l.h * 1.5, 22, '#fff', {stroke: 5, sc: '#8a6a4a', a: 1 - (now - n.t) * 2}); continue; }
@@ -308,7 +309,7 @@ const SCENES = {
         }
         if (now < n.cueT - .05 && x > W + 60) continue;
         let rot = 0, a = 1, hx = x;
-        if (n.res === 'MISS') { const d = now - n.hitT; if (d > .8) continue; hx = l.px + 30 - d * V * .6; rot = Math.min(1.4, d * 7); a = 1 - d / .8; if (d < .6) { trip = d; jump = null; } }
+        if (n.res === 'MISS') { const d = now - n.hitT; if (d > .8) continue; hx = l.px + l.h * .35 - d * V * .5; rot = Math.min(1.4, d * 7); a = 1 - d / .8; if (d < .6) { trip = d; jump = null; } }
         else if (n.res) { const d = now - n.hitT; if (d < .45 && d >= 0) { jump = d; trip = null; } }
         if (hx < -60 || hx > W + 60) continue;
         this.hd(hx, l.gy, rot, a);
@@ -316,7 +317,9 @@ const SCENES = {
       if (trip != null) { spr('pug_trip', l.px, l.gy + 8, l.h * .85, {rot: Math.sin(trip * 30) * .05}); }
       else if (jump != null) { const k = clamp(jump / .45, 0, 1), y = Math.sin(Math.PI * k) * l.h * 1.05; if (k < .5) spr('pug_jump', l.px, l.gy + 4 - y, l.h, {rot: -.15 + k * .3}); else sfDraw(SEQ.pugs[2], l.px, l.gy + 4 - y, l.h, {flip: true, rot: .05 + (k - .5) * .2}); }
       else {
-        const hop = ta >= 0 && ta < .25 ? Math.sin(Math.PI * ta / .25) * l.h * .3 : 0, h2 = ((now / spb * 2) % 1 + 1) % 1, b = Math.abs(Math.sin(h2 * Math.PI)) * 10;
+        let step = null; for (const q of qs) if (q.snd === 'ta' && now >= q.t && now - q.t < .16) step = now - q.t;
+        const hop = ta >= 0 && ta < .25 ? Math.sin(Math.PI * ta / .25) * l.h * .3 : 0, h2 = step != null ? .25 + step / .16 * .5 : ((now / spb * 2) % 1 + 1) % 1, b = Math.abs(Math.sin(h2 * Math.PI)) * (step != null ? 18 : 10);
+        if (step != null) { for (let k = 0; k < 4; k++) circle(l.px - 10 - k * 14 - step * 120, l.gy - 4 - Math.sin(k + 1) * step * 60, 9 * (1 - step / .16) + 2, 'rgba(200,170,130,.8)', INK, 1.5); text('タン', l.px - 40, l.gy + 30, 18, '#fff', {stroke: 4, sc: '#8a6a4a', a: 1 - step / .16}); }
         if (h2 < .5) spr('pug_dash', l.px, l.gy + 4 - hop - b, l.h); else sfDraw(SEQ.pugs[1], l.px, l.gy + 4 - hop - b, l.h * .95, {flip: true});
         ctx.strokeStyle = 'rgba(59,47,42,.35)'; ctx.lineWidth = 3; for (let k = 0; k < 3; k++) { const y = l.gy - l.h * (.25 + k * .22), o = ((now * 6 + k * .3) % 1) * 30; ctx.beginPath(); ctx.moveTo(l.px - l.h * .55 - o, y); ctx.lineTo(l.px - l.h * .9 - o, y); ctx.stroke(); }
         for (let k = 0; k < 3; k++) { const d = (now * 3 + k / 3) % 1; circle(l.px - l.h * .4 - d * 60, l.gy - 6 - d * 14, 6 * (1 - d), 'rgba(220,200,170,.8)'); }
