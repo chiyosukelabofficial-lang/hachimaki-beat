@@ -2,6 +2,11 @@
 const lerp = (a, b, t) => a + (b - a) * t;
 function cueSound(snd, w, e) {
   switch (snd) {
+    case 'pon': tone('sine', 520, w, .09, .5, {to: 980, toT: .05, perc: 1}); noiseHit(w, .03, .15, 2000); break;
+    case 'goro': tone('triangle', 110, w, .25, .6, {to: 70, perc: 1}); noiseHit(w, .18, .35, 200); noiseHit(w + .09, .14, .25, 200); break;
+    case 'kira': tone('sine', 1760, w, .08, .3, {perc: 1}); tone('sine', 2637, w + .04, .12, .25, {perc: 1}); break;
+    case 'gon': tone('square', 90, w, .18, .4, {to: 60, lp: 600, perc: 1}); noiseHit(w, .08, .4, 300); break;
+    case 'wan': tone('sawtooth', 620, w, .14, .3, {to: 380, toT: .1, lp: 1800}); tone('square', 310, w, .14, .12, {to: 190, toT: .1, lp: 1200}); break;
     case 'kakon': tone('triangle', 1500, w, .07, .45, {perc: 1}); tone('sine', 760, w + .01, .12, .4, {perc: 1}); break;
     case 'buzz': case 'buzz2': { const d = snd === 'buzz' ? .22 : .13; const o = actx.createOscillator(), l = actx.createOscillator(), lg = actx.createGain(), g = actx.createGain(), f = actx.createBiquadFilter();
       o.type = 'sawtooth'; o.frequency.value = snd === 'buzz' ? 190 : 260; l.frequency.value = 38; lg.gain.value = 25; l.connect(lg); lg.connect(o.frequency);
@@ -55,7 +60,7 @@ function sfxK(k, midi) {
   else if (k === 'heyp') { tone('sawtooth', 520, w, .15, .18, {to: 720, toT: .06, lp: 2000}); }
   else if (k === 'don') { tone('sine', 120, w, .2, .9, {to: 60, perc: 1}); noiseHit(w, .05, .3, 500); }
 }
-const CUELBL = {kakon: 'カコン', buzz: 'ブン', buzz2: 'ブッ', poko: 'ポコ', oink: 'ブー', suu: 'スッ', noo: 'の〜〜', ha: 'ハッ！', ta: 'タッ', pi: 'ピッ', hk1: 'ハッ', hk2: 'ケ', hk3: 'ヨイ', hey: 'ヘイ！'};
+const CUELBL = {pon: 'ポン', goro: 'ゴロッ', kira: 'キラッ', gon: 'ゴンッ', wan: 'ワン！', kakon: 'カコン', buzz: 'ブン', buzz2: 'ブッ', poko: 'ポコ', oink: 'ブー', suu: 'スッ', noo: 'の〜〜', ha: 'ハッ！', ta: 'タッ', pi: 'ピッ', hk1: 'ハッ', hk2: 'ケ', hk3: 'ヨイ', hey: 'ヘイ！'};
 const SEQ = __SEQ__;
 function sfDraw(f, x, yb, h, o = {}) {
   const im = IM[f.k]; if (!im || !im.complete || !im.naturalWidth) return;
@@ -87,34 +92,49 @@ function ellipse(x, y, rx, ry, fill, stroke, lw = 3) { ctx.beginPath(); ctx.elli
 const mkCall = (arr, lvl, snd = 'oink') => ({lvl, len: 8, c: arr.map(x => [x, snd]), h: arr.map(x => [x + 4])});
 
 const SCENES = {
-  capy: {char: 'capybara', title: 'おけキャッチ', guide: '「カコン」の2拍あとにタップ',
-    pats: [{lvl: 0, len: 4, c: [[0, 'kakon']], h: [[2]]}, {lvl: 1, len: 4, c: [[0, 'kakon'], [.5, 'kakon']], h: [[2], [2.5]]}, {lvl: 2, len: 4, c: [[0, 'kakon'], [1, 'kakon']], h: [[2], [3]]}, {lvl: 2, len: 4, c: [[0, 'kakon'], [.5, 'kakon'], [1, 'kakon']], h: [[2], [2.5], [3]]}],
-    L() { const wy = H * .64, h = Math.min(H * .36, 300), cx = W * .58; return {wy, h, cx, hy: wy + h * .3 - h * .93}; },
-    pos() { const l = this.L(); return [l.cx, l.hy - 40]; }, cuePos() { return [W * .18, H * .5]; }, hitSfx() { sfxK('suzu'); },
-    cap(now, l, ta) {
-      const C = SEQ.capy, x = l.cx, yb = l.wy + l.h * .3, p = charPose(now);
-      if (missing()) { const ra = reactAge(); seqPlay(C, [[5, 0]], 0, x, yb + 4, l.h, {flip: true, rot: Math.sin(ra * 22) * .05 * (1 - ra / .75)}); return; }
-      if (ta >= 0 && ta < .4) { const up = Math.sin(Math.PI * clamp((ta - .04) / .23, 0, 1)) * l.h * .2; seqPlay(C, [[1, 0], [3, .05], [4, .27], [0, .38]], ta, x, yb - up, l.h, {flip: true}); return; }
-      const ra = reactAge();
-      if (G.react.res && G.react.res !== 'MISS' && ra >= .38 && ra < .9) { const hop = Math.sin(Math.PI * clamp((ra - .38) / .5, 0, 1)) * l.h * .1; sfDraw(SEQ.capyC[0], x, yb - hop, l.h * .98); return; }
-      seqPlay(C, [[0, 0]], 0, x, yb, l.h, {flip: true, sx: p.sx, sy: p.sy, rot: p.rot});
-    },
-    bucket(x, y, a) { ctx.save(); ctx.globalAlpha = a; ctx.beginPath(); ctx.moveTo(x - 24, y - 24); ctx.lineTo(x + 24, y - 24); ctx.lineTo(x + 19, y); ctx.lineTo(x - 19, y); ctx.closePath(); ctx.fillStyle = '#d39a5c'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke(); ctx.fillStyle = INK; ctx.fillRect(x - 22, y - 17, 44, 3); ctx.fillRect(x - 20, y - 8, 40, 3); ctx.restore(); },
+  capy: {char: 'capybara', title: 'みかん乗せ温泉', guide: '「ポン」の次の拍で頭キャッチ！ 石の「ゴロッ」はよけて',
+    pats: [{lvl: 0, len: 4, c: [[0, 'pon'], [2, 'pon']], h: [[1, 0, 0], [3, 0, 1]]},
+      {lvl: 1, len: 4, c: [[0, 'pon'], [2, 'goro']], h: [[1, 0, 0], [3, 0, 1, 1]]},
+      {lvl: 1, len: 4, c: [[0, 'pon'], [1, 'pon'], [2, 'pon']], h: [[1, 0, 0], [2, 0, 1], [3, 0, 2]]},
+      {lvl: 2, len: 4, c: [[0, 'goro'], [1, 'pon'], [1.5, 'pon'], [2.5, 'pon']], h: [[1, 0, 0, 1], [2, 0, 1], [2.5, 0, 2], [3.5, 0, 3]]},
+      {lvl: 2, len: 4, c: [[0, 'pon'], [.5, 'pon'], [2, 'goro'], [2.5, 'pon']], h: [[1, 0, 0], [1.5, 0, 1], [3, 0, 2, 1], [3.5, 0, 3]]}],
+    L() { const gy = H * .8, h = Math.min(H * .3, W * .8 / 1.33), cx = W * .58; return {gy, h, cx, wy: gy - h * .38}; },
+    head(l, bob) { return sfPt(SEQ.tub[0], [.48, .1], l.cx, l.gy - bob, l.h); },
+    pos() { const l = this.L(), hd = this.head(l, 0); return [hd[0], hd[1] - 70]; }, cuePos() { return [W * .2, H * .26]; }, hitSfx() { sfxK('suzu'); },
+    mikan(x, y, r, rot) { ctx.save(); ctx.translate(x, y); ctx.rotate(rot || 0); circle(0, 0, r, '#f39a2b', INK, 2.5); ctx.fillStyle = '#5c9a3a'; ctx.beginPath(); ctx.ellipse(r * .35, -r * .9, r * .45, r * .2, -.5, 0, 7); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.stroke(); circle(-r * .35, -r * .3, r * .2, 'rgba(255,255,255,.55)'); ctx.restore(); },
+    rock(x, y, r, rot) { ctx.save(); ctx.translate(x, y); ctx.rotate(rot || 0); ctx.beginPath(); for (let k = 0; k < 7; k++) { const a = k / 7 * 6.283, q = r * (.8 + .2 * Math.sin(k * 2.3)); ctx.lineTo(Math.cos(a) * q, Math.sin(a) * q); } ctx.closePath(); ctx.fillStyle = '#9a9a92'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.stroke(); ctx.restore(); },
     draw(now) {
-      const l = this.L(), p = charPose(now), ta = tapAge(now);
+      const l = this.L(), ta = tapAge(now), ns = G.byG.capy || [];
       bgSky('#f6e3c4', '#f2d6b0');
-      ctx.fillStyle = '#c9b9a0'; ctx.beginPath(); ctx.moveTo(0, l.wy); ctx.quadraticCurveTo(W * .3, l.wy - H * .2, W * .6, l.wy); ctx.fill();
-      this.cap(now, l, ta);
-      for (const n of G.byG.capy || []) {
-        if (now < n.cueT - .02) continue;
-        if (!n.res) { const q = clamp((now - n.cueT) / (n.t - n.cueT), 0, 1.1); this.bucket(lerp(-30, l.cx - 10, q), l.wy - 2 + Math.sin(now * 7 + n.t) * 3, 1); }
-        else if (n.res === 'MISS') { const d = now - n.hitT; if (d < 1.4) this.bucket(l.cx + d * 170, l.wy - 2, 1 - d / 1.4); }
-        else { const d = now - n.hitT; if (d < .9) this.bucket(l.cx, l.hy + 4 - (n.k || 0) * 20 - 28 * Math.max(0, spring(tapAge(now))) - 30 * Math.max(0, spring(d) * (d < .1 ? 1 : .4)), 1 - Math.max(0, d - .6) / .3); }
-      }
-      ctx.fillStyle = 'rgba(150,205,210,.88)'; ctx.fillRect(0, l.wy, W, H - l.wy); ctx.fillStyle = INK; ctx.fillRect(0, l.wy - 1.5, W, 3);
-      ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 3;
-      for (let i = 0; i < 4; i++) { const x = W * (.15 + i * .25) + Math.sin(now + i) * 20, y = l.wy - 50 - ((now * 30 + i * 40) % 120); ctx.globalAlpha = .5; ctx.beginPath(); ctx.moveTo(x, y + 30); ctx.bezierCurveTo(x - 12, y + 15, x + 12, y + 10, x, y); ctx.stroke(); }
+      ctx.fillStyle = '#c9b9a0'; ctx.beginPath(); ctx.moveTo(0, l.gy); ctx.quadraticCurveTo(W * .3, l.gy - H * .25, W * .65, l.gy); ctx.fill();
+      ctx.fillStyle = '#b9c99c'; ctx.fillRect(0, l.gy, W, H); ctx.fillStyle = INK; ctx.fillRect(0, l.gy - 1.5, W, 3);
+      ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 3;
+      for (let i = 0; i < 4; i++) { const k = (now * 30 + i * 40) % 120, x = l.cx + (i - 1.5) * l.h * .35 + Math.sin(now + i) * 12, y = l.wy - 30 - k; ctx.globalAlpha = .55 * (1 - k / 120); ctx.beginPath(); ctx.moveTo(x, y + 30); ctx.bezierCurveTo(x - 12, y + 15, x + 12, y + 10, x, y); ctx.stroke(); }
       ctx.globalAlpha = 1;
+      let st = 0, lastOk = null;
+      for (const n of ns) { if (!n.res || n.hitT > now) continue; if (n.res === 'MISS' && (!n.trap || n.bonk)) st = 0; else if (!n.trap && n.res !== 'MISS') { st++; lastOk = n; } }
+      const bonk = ns.find(n => n.bonk && now - n.hitT < .8), drop = ns.find(n => n.res === 'MISS' && !n.trap && now - n.hitT < .8);
+      const sp = Math.max(0, spring(ta)), bob = ta >= 0 && ta < .28 ? Math.sin(Math.PI * ta / .28) * l.h * .08 : 0, T = SEQ.tub;
+      if (bonk) seqPlay(T, [[2, 0]], 0, l.cx + Math.sin(now * 60) * 4 * (1 - (now - bonk.hitT) / .8), l.gy, l.h);
+      else if (drop) seqPlay(T, [[1, 0]], 0, l.cx, l.gy, l.h);
+      else seqPlay(T, [[0, 0]], 0, l.cx, l.gy - bob, l.h, {sx: 1 + .05 * sp, sy: 1 - .05 * sp});
+      const hd = this.head(l, bob), r = l.h * .075;
+      if (!bonk && !drop) for (let i = 0; i < Math.min(st, 9); i++) { const w = Math.sin(now * 3 + i) * i * 1.3; this.mikan(hd[0] + w, hd[1] - r * .6 - i * r * 1.75, r, Math.sin(now * 2 + i) * .1); }
+      const x0 = -30, y0 = H * .34;
+      for (const n of ns) {
+        if (now < n.cueT - .02) continue;
+        const tx = n.trap ? hd[0] + r * 2.5 : hd[0], ty = n.trap ? hd[1] - l.h * .14 : hd[1] - r * .6 - st * r * 1.75, span = Math.max(.2, n.t - n.cueT), q = (now - n.cueT) / span;
+        if (n.bonk) { const d = now - n.hitT; if (d < 1) this.rock(hd[0] - d * 240, hd[1] - d * 420 + d * d * 1100, r * 1.15, d * 12); continue; }
+        if (n.res && n.res !== 'MISS' && !n.trap) continue;
+        const A = H * .1 + span * 90, px = lerp(x0, tx, q), py0 = lerp(y0, ty, q) - Math.sin(Math.PI * Math.min(q, 1)) * A + (q > 1 ? (q - 1) * (q - 1) * H * 3 : 0);
+        if (q > 1) { const d = (q - 1) * span; if (d > 1) continue; 
+          const lim = l.gy - r * 1.1, py = Math.min(py0, lim); if (n.trap && py >= lim && d < .5) text('ゴロン', px, lim - 40, 20, '#fff', {stroke: 5, sc: '#8a8a80', a: 1 - d * 2});
+          ctx.globalAlpha = clamp(1 - d, 0, 1); n.trap ? this.rock(px + d * 80, py, r * 1.15, q * 6) : this.mikan(px + d * 120, py, r, q * 5); ctx.globalAlpha = 1; continue; }
+        n.trap ? this.rock(px, py0, r * 1.15, q * 6) : this.mikan(px, py0, r, q * 5);
+      }
+      if (bonk) { const d = now - bonk.hitT; for (let k = 0; k < 3; k++) text('★', hd[0] + Math.cos(now * 6 + k * 2.1) * 40, hd[1] + Math.sin(now * 6 + k * 2.1) * 12, 20, '#f2c12e', {stroke: 3}); text('ゴツン！', hd[0] + 50, hd[1] - 60, 26, '#fff', {stroke: 6, sc: '#8a6a4a', a: 1 - d / .8}); }
+      if (drop) text('zzz', hd[0] + 40, hd[1] - 30 - (now - drop.hitT) * 30, 22, '#fff', {stroke: 5, sc: '#6aa3b5'});
+      if (lastOk && now - lastOk.hitT < .45 && st >= 3) text(st + 'こ！', hd[0] + 60, hd[1] - st * r * 1.75, 24, '#fff', {stroke: 6, sc: '#f39a2b', a: 1 - (now - lastOk.hitT) / .45});
     }},
   frog: {char: 'frog', title: 'ハエとり', guide: '「ブン、ブン」の次の拍でタップ',
     pats: [{lvl: 0, len: 4, c: [[0, 'buzz'], [1, 'buzz']], h: [[2]]}, {lvl: 1, len: 4, c: [[0, 'buzz2'], [.5, 'buzz2']], h: [[1]]}, {lvl: 2, len: 4, c: [[0, 'buzz'], [1, 'buzz'], [2.5, 'buzz2'], [3, 'buzz2']], h: [[2, 0, 0], [3.5, 0, 2]]}, {lvl: 2, len: 4, c: [[0, 'buzz2'], [.5, 'buzz2'], [2, 'buzz2'], [2.5, 'buzz2']], h: [[1, 0, 0], [3, 0, 2]]}],
@@ -141,36 +161,44 @@ const SCENES = {
         else if (n.res === 'MISS') { const d = now - n.hitT; if (d < 1) this.fly(l.mx - d * 300, l.my - d * 80 + Math.sin(d * 30) * 8); }
       }
     }},
-  mole: {char: 'mole', title: 'ポコポコたたき', guide: '「ポコ、ポコ」のリズムの続きでタップ',
-    pats: [{lvl: 0, len: 4, c: [[0, 'poko'], [1, 'poko']], h: [[2]]}, {lvl: 1, len: 4, c: [[0, 'poko'], [.5, 'poko']], h: [[1]]}, {lvl: 1, len: 4, c: [[0, 'poko'], [1, 'poko'], [2, 'poko']], h: [[3]]}, {lvl: 2, len: 4, c: [[0, 'poko'], [.5, 'poko'], [2, 'poko'], [2.5, 'poko']], h: [[1, 0, 0], [3, 0, 2]]}],
-    L() { return {y: H * .64, xs: [W * .2, W * .5, W * .8], rx: Math.min(W * .13, 70), mh: Math.min(H * .2, 160)}; },
-    pos(n) { const l = this.L(); return [l.xs[n.hole], l.y - l.mh - 10]; }, cuePos() { return [W / 2, H * .3]; }, hitSfx() { sfxK('bonk'); },
+  mole: {char: 'mole', title: 'お宝さがし', guide: '「キラッ、キラッ」の次で顔を出す！ 「ゴンッ」のときは出ないで',
+    pats: [{lvl: 0, len: 4, c: [[0, 'kira'], [.5, 'kira'], [2, 'kira'], [2.5, 'kira']], h: [[1, 0, 0], [3, 0, 2]]},
+      {lvl: 1, len: 4, c: [[0, 'kira'], [.5, 'kira'], [2, 'gon'], [2.5, 'gon']], h: [[1, 0, 0], [3, 0, 2, 1]]},
+      {lvl: 1, len: 4, c: [[0, 'gon'], [.5, 'gon'], [2, 'kira'], [2.5, 'kira']], h: [[1, 0, 0, 1], [3, 0, 2]]},
+      {lvl: 2, len: 4, c: [[0, 'kira'], [1, 'kira'], [2, 'kira'], [2.5, 'kira']], h: [[2, 0, 0], [3, 0, 2]]},
+      {lvl: 2, len: 4, c: [[0, 'gon'], [.5, 'gon'], [1.5, 'kira'], [2, 'kira']], h: [[1, 0, 0, 1], [2.5, 0, 2]]},
+      {lvl: 2, len: 4, c: [[0, 'kira'], [.5, 'kira'], [1.5, 'gon'], [2, 'gon']], h: [[1, 0, 0], [2.5, 0, 2, 1]]}],
+    L() { return {gy: H * .72, x: W * .46, h: Math.min(H * .3, W * .62)}; },
+    pos() { const l = this.L(); return [l.x, l.gy - l.h - 10]; }, cuePos() { return [W * .5, H * .2]; }, hitSfx() { sfxK('tok'); },
+    cap(x, y, r, rot) { ctx.save(); ctx.translate(x, y); ctx.rotate(rot || 0); ctx.beginPath(); for (let k = 0; k < 24; k++) { const a = k / 24 * 6.283, q = r * (k % 2 ? 1 : .86); ctx.lineTo(Math.cos(a) * q, Math.sin(a) * q * .5); } ctx.closePath(); ctx.fillStyle = '#d9dde2'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.stroke(); ellipse(0, -r * .06, r * .62, r * .24, '#f4f7fa', INK, 1.5); ctx.restore(); },
     draw(now) {
-      const l = this.L(), ta = tapAge(now);
+      const l = this.L(), ta = tapAge(now), ns = G.byG.mole || [], qs = G.cuesByG.mole || [], ph = ((now / G.song.spb) % 1 + 1) % 1;
       bgSky('#e9f2d9', '#cfe3a8');
-      ctx.fillStyle = '#b48a5a'; ctx.fillRect(0, H * .58, W, H); ctx.fillStyle = INK; ctx.fillRect(0, H * .58 - 1.5, W, 3);
-      for (let i = 0; i < 3; i++) ellipse(l.xs[i], l.y, l.rx, l.rx * .32, '#4a3a30', INK);
-      for (const q of G.cuesByG.mole || []) { const d = now - q.t; if (d < 0 || d > .3) continue; for (let k = 0; k < 5; k++) circle(l.xs[q.hole] + Math.cos(k * 1.3) * d * 140, l.y - 10 - Math.sin(k * .7 + .3) * d * 160, 6, '#8a6a4a', INK, 2); }
-      let active = 1;
-      for (const n of G.byG.mole || []) {
-        if (n.t - now > 1.5) break; if (now > n.cueT - .1) active = n.hole;
-        let q;
-        if (!n.res) q = clamp(1 - (n.t - now) / .3, 0, 1);
-        else { const d = now - n.hitT; if (d > .4) continue; q = 1; }
-        const hitOk = n.res && n.res !== 'MISS';
-        ctx.save(); ctx.beginPath(); ctx.rect(l.xs[n.hole] - l.rx * 1.3, 0, l.rx * 2.6, l.y); ctx.clip();
-        const sq = hitOk ? 1 : 0, wob = !n.res ? spring(now - n.t + .3) * .05 : 0;
-        if (n.res) { ctx.restore(); const d = now - n.hitT, sp = Math.max(0, spring(d)); seqPlay(SEQ.moleP, sq ? [[2, 0]] : [[0, 0], [1, .22]], d, l.xs[n.hole], l.y + l.mh * .2, l.mh * .9, {sx: 1 + .1 * sp, sy: 1 - .1 * sp, fade: .05}); continue; }
-        if (q < .72) seqPlay(SEQ.mole2, [[1, 0], [2, .3], [3, .55]], q, l.xs[n.hole], l.y + l.mh * .2, l.mh * .9, {fade: .12});
-        else spr('mole', l.xs[n.hole], l.y + l.mh * (1 - q) + l.mh * .1, l.mh, {sy: 1 - wob, sx: 1 + wob});
-        ctx.restore();
-        if (hitOk) text('★', l.xs[n.hole] + 30, l.y - l.mh, 30, '#f2c12e', {stroke: 4});
+      ctx.fillStyle = '#b48a5a'; ctx.fillRect(0, l.gy, W, H); ctx.fillStyle = INK; ctx.fillRect(0, l.gy - 1.5, W, 3);
+      ctx.strokeStyle = '#6d8f4e'; ctx.lineWidth = 3; for (let i = 0; i < 9; i++) { const x = (i * 97 + 30) % W; ctx.beginPath(); ctx.moveTo(x, l.gy); ctx.lineTo(x - 6, l.gy - 14); ctx.moveTo(x, l.gy); ctx.lineTo(x + 5, l.gy - 16); ctx.stroke(); }
+      const M2 = SEQ.mole2, MP = SEQ.moleP;
+      const okN = ns.filter(n => !n.trap && n.res && n.res !== 'MISS' && now - n.hitT < .5).pop(), bonk = ns.find(n => n.bonk && now - n.hitT < .9);
+      const missN = ns.find(n => !n.trap && n.res === 'MISS' && now - n.hitT < .6), dodge = ns.find(n => n.trap && !n.bonk && now >= n.t && now - n.t < .6);
+      const peek = qs.some(q => q.snd === 'kira' && now >= q.t && now - q.t < .22), got = ns.filter(n => !n.trap && n.res && n.res !== 'MISS' && n.hitT <= now).length;
+      const tr = ns.find(n => n.trap && now > n.cueT - .05 && now < n.t + .45);
+      if (bonk) { const d = now - bonk.hitT; sfDraw(MP[2], l.x, l.gy + 8, l.h * .85, {rot: Math.sin(d * 30) * .05 * (1 - d)}); for (let k = 0; k < 3; k++) text('★', l.x + Math.cos(now * 6 + k * 2.1) * 44, l.gy - l.h * .75 + Math.sin(now * 6 + k * 2.1) * 12, 20, '#f2c12e', {stroke: 3}); }
+      else if (okN) { const d = now - okN.hitT, up = clamp(d / .07, 0, 1); ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, l.gy + 14); ctx.clip(); seqPlay(MP, [[1, 0], [0, .28]], d, l.x, l.gy + 10 + (1 - up) * l.h * .6, l.h, {fade: .05}); ctx.restore(); }
+      else if (missN || (ta >= 0 && ta < .2)) seqPlay(M2, [[3, 0]], 0, l.x, l.gy + 12 - (missN ? 0 : 10 * Math.sin(Math.PI * ta / .2)), l.h * .9);
+      else if (peek) seqPlay(M2, [[2, 0]], 0, l.x, l.gy + 12, l.h * .9, {sx: 1.05, sy: .95});
+      else seqPlay(M2, [[1, 0]], 0, l.x, l.gy + 12, l.h * .9, {sy: 1 - .04 * Math.exp(-ph * 5)});
+      const r = l.h * .14;
+      for (const n of ns) {
+        if (n.trap || now < n.cueT - .02) continue;
+        if (!n.res) { const q = clamp((now - n.cueT) / Math.max(.2, n.t - n.cueT), 0, 1.2), y = lerp(H * .16, l.gy - l.h * .8, q); this.cap(l.x, y, r, Math.sin(now * 10) * .2); if (Math.sin(now * 20) > 0) text('✦', l.x + r * 1.1, y - r * .6, 18, '#fff', {stroke: 3, sc: '#f2c12e'}); }
+        else if (n.res === 'MISS') { const d = now - n.hitT; if (d < .8) this.cap(l.x + d * 300, l.gy - l.h * .5 - d * 260 + d * d * 700, r, d * 14); }
       }
-      for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.ellipse(l.xs[i], l.y, l.rx * 1.06, l.rx * .38, 0, 0, Math.PI); ctx.fillStyle = '#8a6a4a'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke(); }
-      const ang = ta < 0 || ta > .4 ? -.6 : ta < .04 ? -.6 - ta / .04 * .35 : ta < .09 ? lerp(-.95, .75, (ta - .04) / .05) : lerp(.75, -.6, Math.min(1, (ta - .09) / .3)), hx = l.xs[active] + 60, hy = l.y - l.mh - 40;
-      if (ta > .08 && ta < .3) { const k = (ta - .08) / .22; ctx.globalAlpha = 1 - k; ellipse(l.xs[active], l.y - 4, l.rx * (1 + k), l.rx * .3 * (1 + k), null, '#fff', 4); ctx.globalAlpha = 1; }
-      ctx.save(); ctx.translate(hx + 30, hy + 60); ctx.rotate(ang); ctx.fillStyle = '#c98b4f'; ctx.strokeStyle = INK; ctx.lineWidth = 3;
-      ctx.fillRect(-4, -70, 8, 70); ctx.strokeRect(-4, -70, 8, 70); rr(-30, -92, 60, 30, 8); ctx.fillStyle = '#e8554e'; ctx.fill(); ctx.stroke(); ctx.restore();
+      if (tr) { const dt = now - tr.t, th = dt < -.09 ? 1.15 + Math.sin(now * 8) * .06 : dt < 0 ? lerp(1.15, -.78, (dt + .09) / .09) : dt < .18 ? -.78 : lerp(-.78, 1.15, Math.min(1, (dt - .18) / .25)), Lh = l.h * .85, px = l.x + l.h * .78, py = l.gy - l.h * 1.05;
+        ctx.save(); ctx.translate(px, py); ctx.rotate(-th); ctx.fillStyle = '#c98b4f'; ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.fillRect(-Lh, -7, Lh, 14); ctx.strokeRect(-Lh, -7, Lh, 14); rr(-Lh - 34, -42, 68, 84, 12); ctx.fillStyle = '#e8554e'; ctx.fill(); ctx.stroke(); ctx.restore();
+        if (dt >= 0 && dt < .35) { const a = 1 - dt / .35; if (!tr.bonk) text('スカッ！', l.x - 60, l.gy - l.h * .7, 28, '#fff', {stroke: 6, sc: '#4fb3a9', a}); else text('ゴンッ！', l.x - 60, l.gy - l.h * .8, 30, '#fff', {stroke: 6, sc: '#e8554e', a}); for (let k = 0; k < 5; k++) circle(l.x + Math.cos(k * 1.3) * dt * 200, l.gy - 10 - Math.sin(k * .7 + .3) * dt * 150, 6, '#8a6a4a', INK, 2); }
+      }
+      if (dodge && !tr) seqPlay(M2, [[2, 0]], 0, l.x, l.gy + 12, l.h * .9);
+      this.cap(W - 70, SAT + 96, 16, 0); text('×' + got, W - 30, SAT + 104, 22, '#fff', {stroke: 5, sc: '#8a6a4a'});
+      if (okN && now - okN.hitT < .35) text('ゲット！', l.x + l.h * .55, l.gy - l.h * 1.05, 26, '#fff', {stroke: 6, sc: '#f2c12e', a: 1 - (now - okN.hitT) / .35});
     }},
   pig: {char: 'pig', title: 'まねっこコーラス', guide: 'ぶたまるの「ブー」を次の小節でマネしてタップ',
     pats: [mkCall([0, 1, 2], 0), mkCall([0, 2, 3], 0), mkCall([0, 1, 1.5, 2], 1), mkCall([0, .5, 1, 3], 1), mkCall([0, .5, 1.5, 2, 3], 2), mkCall([0, .75, 1.5, 2, 3], 2)],
@@ -250,30 +278,52 @@ const SCENES = {
       if (push > .3 && (G.byG.bulldog || []).some(n => n.res && n.res !== 'MISS' && now - n.hitT < .2)) text('バチン！', l.px - 20, l.y - l.h * 1.1, 26, '#fff', {stroke: 6, sc: '#e8554e'});
     }},
 
-  hurdle: {char: 'pug', title: 'ハードル走', guide: '「タッ、タッ」の次の拍でジャンプ',
-    pats: [{lvl: 0, len: 4, c: [[0, 'ta'], [1, 'ta']], h: [[2]]}, {lvl: 1, len: 4, c: [[0, 'ta'], [.5, 'ta']], h: [[1]]}, {lvl: 2, len: 4, c: [[0, 'ta'], [1, 'ta'], [2.5, 'ta'], [3, 'ta']], h: [[2, 0, 0], [3.5, 0, 2]]}],
+  hurdle: {char: 'pug', title: 'パグ太ダッシュ', guide: '「タッ、タッ」の次でジャンプ！ 「ワン！」は跳ばずにホネをパクッ',
+    pats: [{lvl: 0, len: 4, c: [[0, 'ta'], [.5, 'ta'], [2, 'ta'], [2.5, 'ta']], h: [[1, 0, 0], [3, 0, 2]]},
+      {lvl: 1, len: 4, c: [[0, 'ta'], [.5, 'ta'], [2, 'wan']], h: [[1, 0, 0], [3, 0, 2, 1]]},
+      {lvl: 1, len: 4, c: [[0, 'ta'], [1, 'ta'], [2.5, 'ta'], [3, 'ta']], h: [[2, 0, 0], [3.5, 0, 2]]},
+      {lvl: 2, len: 4, c: [[0, 'wan'], [1, 'ta'], [1.5, 'ta'], [2.5, 'ta'], [3, 'ta']], h: [[1, 0, 0, 1], [2, 0, 1], [3.5, 0, 3]]},
+      {lvl: 2, len: 4, c: [[0, 'ta'], [.5, 'ta'], [1.5, 'ta'], [2, 'ta'], [3, 'wan']], h: [[1, 0, 0], [2.5, 0, 2], [4, 0, 4, 1]]}],
     L() { return {gy: H * .72, px: W * .3, h: Math.min(H * .19, 160)}; },
-    pos() { const l = this.L(); return [l.px, l.gy - l.h * 1.6]; }, cuePos() { return [W * .72, H * .34]; }, hitSfx() { sfxK('hop'); },
-    hd(x, y, rot, a) { ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.globalAlpha = a; ctx.fillStyle = '#c98b4f'; ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.fillRect(-28, -40, 8, 40); ctx.strokeRect(-28, -40, 8, 40); ctx.fillRect(20, -40, 8, 40); ctx.strokeRect(20, -40, 8, 40); rr(-36, -50, 72, 13, 6); ctx.fill(); ctx.stroke(); ctx.restore(); },
+    pos() { const l = this.L(); return [l.px, l.gy - l.h * 1.6]; }, cuePos() { return [W * .72, H * .3]; }, hitSfx() { sfxK('hop'); },
+    hd(x, y, rot, a) { ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.globalAlpha = a; ctx.fillStyle = '#c98b4f'; ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.fillRect(-28, -40, 8, 40); ctx.strokeRect(-28, -40, 8, 40); ctx.fillRect(20, -40, 8, 40); ctx.strokeRect(20, -40, 8, 40); rr(-36, -50, 72, 13, 6); ctx.fillStyle = '#e8554e'; ctx.fill(); ctx.stroke(); ctx.restore(); },
+    bone(x, y, s, rot) { ctx.save(); ctx.translate(x, y); ctx.rotate(rot || 0); ctx.fillStyle = '#fbf3e0'; ctx.strokeStyle = INK; ctx.lineWidth = 2.5; rr(-s, -s * .22, s * 2, s * .44, 4); ctx.fill(); ctx.stroke(); for (const [a, b] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) circle(a * s, b * s * .28, s * .3, '#fbf3e0', INK, 2.5); rr(-s * .9, -s * .2, s * 1.8, s * .4, 3); ctx.fill(); ctx.restore(); },
     draw(now) {
-      const l = this.L(), p = charPose(now), ta = tapAge(now);
+      const l = this.L(), ta = tapAge(now), spb = G.song.spb, V = W * .45 / spb, ns = G.byG.hurdle || [], ph = ((now / spb) % 1 + 1) % 1;
       bgSky('#dff0f7', '#f4ecda');
+      ctx.fillStyle = '#cfe3c0'; for (let i = 0; i < 4; i++) { const x = ((i * W * .55 - now * V * .12) % (W * 2.2) + W * 2.2) % (W * 2.2) - W * .4; ctx.beginPath(); ctx.ellipse(x, l.gy - 60, W * .33, 80, 0, Math.PI, 0); ctx.fill(); }
       ctx.fillStyle = '#9fcd8f'; ctx.fillRect(0, l.gy - 60, W, 60);
+      ctx.strokeStyle = 'rgba(140,100,60,.55)'; ctx.lineWidth = 4; for (let i = 0; i < 9; i++) { const x = ((i * 60 - now * V * .5) % 540 + 540) % 540 - 30; ctx.beginPath(); ctx.moveTo(x, l.gy - 52); ctx.lineTo(x, l.gy - 12); ctx.stroke(); } ctx.beginPath(); ctx.moveTo(0, l.gy - 42); ctx.lineTo(W, l.gy - 42); ctx.stroke();
       ctx.fillStyle = '#d9a06a'; ctx.fillRect(0, l.gy, W, H); ctx.fillStyle = INK; ctx.fillRect(0, l.gy - 1.5, W, 3);
-      ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 4;
-      for (let i = 0; i < 8; i++) { const x = ((i * 90 - now * 300) % (W + 90) + W + 90) % (W + 90) - 45; ctx.beginPath(); ctx.moveTo(x, l.gy + 40); ctx.lineTo(x + 44, l.gy + 40); ctx.stroke(); }
-      let jump = null, trip = null;
-      for (const n of G.byG.hurdle || []) {
-        if (now < n.cueT - .05) continue;
-        const span = Math.max(.3, n.t - n.cueT); let x = l.px + (n.t - now) / span * W * .6, rot = 0, a = 1;
-        if (n.res === 'MISS') { const d = now - n.hitT; if (d > .8) continue; x = l.px + 30; rot = Math.min(1.4, d * 7); a = 1 - d / .8; if (d < .65) { trip = d; jump = null; } }
-        else if (n.res) { const d = now - n.hitT; if (d < .45 && d >= 0) { jump = d; trip = null; } if (x < -60) continue; }
-        if (x > W + 60) continue;
-        this.hd(x, l.gy, rot, a);
+      ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 4; for (let i = 0; i < 8; i++) { const x = ((i * 90 - now * V) % 720 + 720) % 720 - 45; ctx.beginPath(); ctx.moveTo(x, l.gy + 40); ctx.lineTo(x + 44, l.gy + 40); ctx.stroke(); }
+      let jump = null, trip = null, munch = null;
+      for (const n of ns) {
+        const x = l.px + (n.t - now) * V;
+        if (n.trap) {
+          const by = l.gy - l.h * .42;
+          if (n.bonk) { const d = now - n.hitT; if (d >= 0 && d < .45) { jump = d; trip = null; } if (x > -40 && x < W + 40) this.bone(x, by, 20, now * 8); if (now > n.t && now - n.t < .5) text('あっ…', l.px - 20, l.gy - l.h * 1.5, 22, '#fff', {stroke: 5, sc: '#8a6a4a', a: 1 - (now - n.t) * 2}); continue; }
+          if (now < n.t) { if (x < W + 40 && now > n.cueT - .1) this.bone(x, by - Math.abs(Math.sin(now * 9)) * 16, 20, now * 8); }
+          else if (now - n.t < .5) { munch = n; }
+          continue;
+        }
+        if (now < n.cueT - .05 && x > W + 60) continue;
+        let rot = 0, a = 1, hx = x;
+        if (n.res === 'MISS') { const d = now - n.hitT; if (d > .8) continue; hx = l.px + 30 - d * V * .6; rot = Math.min(1.4, d * 7); a = 1 - d / .8; if (d < .6) { trip = d; jump = null; } }
+        else if (n.res) { const d = now - n.hitT; if (d < .45 && d >= 0) { jump = d; trip = null; } }
+        if (hx < -60 || hx > W + 60) continue;
+        this.hd(hx, l.gy, rot, a);
       }
-      if (trip != null) spr('pug_trip', l.px, l.gy + 8, l.h * .85, {rot: Math.sin(trip * 30) * .05});
-      else if (jump != null) { const y = Math.sin(Math.PI * clamp(jump / .45, 0, 1)) * l.h * 1.0; seqPlay(SEQ.pugs, [[1, 0], [2, .13], [3, .34]], jump, l.px, l.gy + 4 - y, l.h, {flip: true, rot: .1 - jump * .22, fade: .06}); }
-      else { const hop = ta >= 0 && ta < .3 ? Math.sin(Math.PI * ta / .3) * l.h * .3 : 0, ph = ((now / G.song.spb) % 1 + 1) % 1; spr('pug_dash', l.px, l.gy + 4 - hop - Math.abs(Math.sin(ph * Math.PI * 2)) * 8, l.h, {sx: p.sx, sy: p.sy}); }
+      if (trip != null) { spr('pug_trip', l.px, l.gy + 8, l.h * .85, {rot: Math.sin(trip * 30) * .05}); }
+      else if (jump != null) { const k = clamp(jump / .45, 0, 1), y = Math.sin(Math.PI * k) * l.h * 1.05; if (k < .5) spr('pug_jump', l.px, l.gy + 4 - y, l.h, {rot: -.15 + k * .3}); else sfDraw(SEQ.pugs[2], l.px, l.gy + 4 - y, l.h, {flip: true, rot: .05 + (k - .5) * .2}); }
+      else {
+        const hop = ta >= 0 && ta < .25 ? Math.sin(Math.PI * ta / .25) * l.h * .3 : 0, h2 = ((now / spb * 2) % 1 + 1) % 1, b = Math.abs(Math.sin(h2 * Math.PI)) * 10;
+        if (h2 < .5) spr('pug_dash', l.px, l.gy + 4 - hop - b, l.h); else sfDraw(SEQ.pugs[1], l.px, l.gy + 4 - hop - b, l.h * .95, {flip: true});
+        ctx.strokeStyle = 'rgba(59,47,42,.35)'; ctx.lineWidth = 3; for (let k = 0; k < 3; k++) { const y = l.gy - l.h * (.25 + k * .22), o = ((now * 6 + k * .3) % 1) * 30; ctx.beginPath(); ctx.moveTo(l.px - l.h * .55 - o, y); ctx.lineTo(l.px - l.h * .9 - o, y); ctx.stroke(); }
+        for (let k = 0; k < 3; k++) { const d = (now * 3 + k / 3) % 1; circle(l.px - l.h * .4 - d * 60, l.gy - 6 - d * 14, 6 * (1 - d), 'rgba(220,200,170,.8)'); }
+      }
+      if (munch) { const d = now - munch.t; this.bone(l.px + l.h * .45, l.gy - l.h * .62, 16, .2); text('パクッ！', l.px + 40, l.gy - l.h * 1.3 - d * 30, 26, '#fff', {stroke: 6, sc: '#e8a33e', a: 1 - d * 2}); }
+      const got = ns.filter(n => n.trap && !n.bonk && now > n.t).length;
+      if (got) { this.bone(W - 74, SAT + 100, 14, 0); text('×' + got, W - 30, SAT + 106, 22, '#fff', {stroke: 5, sc: '#8a6a4a'}); }
     }},
   penguin: {char: 'penguin', title: 'はらすべり', guide: '笛の「ピッ、ピッ」の次の拍でタップ',
     pats: [{lvl: 0, len: 4, c: [[0, 'pi'], [1, 'pi']], h: [[2]]}, {lvl: 1, len: 4, c: [[0, 'pi'], [.5, 'pi']], h: [[1]]}, {lvl: 2, len: 4, c: [[0, 'pi'], [.5, 'pi'], [1, 'pi']], h: [[1.5]]}],
@@ -346,23 +396,23 @@ const SCN_KEYS = Object.keys(SCENES);
 
 function buildCue(st, spb) {
   const rng = RNG(hash(st.id) + 5), segs = [], cues = [], notes = []; let b = 8;
-  const put = (g, lvl, practice) => {
+  const put = (g, lvl, practice, pi = 0) => {
     const P = SCENES[g].pats, ok = P.filter(p => p.lvl <= lvl), top = ok.filter(p => p.lvl === Math.max(...ok.map(x => x.lvl)));
-    const p = practice ? P[0] : (rng() < .6 ? pick(rng, top) : pick(rng, ok));
+    const p = practice ? P[pi] : (rng() < .6 ? pick(rng, top) : pick(rng, ok));
     const hole = Math.floor(rng() * 3), grp = cues.length;
     const pc = p.c.map(([x, snd, d]) => ({t: (b + x) * spb, g, snd, dur: (d || 0) * spb, hole, grp, midi: g === 'pig' ? pick(rng, [64, 67, 69, 72, 74]) : 0}));
-    p.h.forEach(([x, d, ci], k) => { if (ci == null) ci = p.c.length === p.h.length ? k : 0; notes.push({t: (b + x) * spb, dur: (d || 0) * spb, g, practice, hole, k, cueT: pc[ci].t, midi: pc[ci].midi}); });
+    p.h.forEach(([x, d, ci, tr], k) => { if (ci == null) ci = p.c.length === p.h.length ? k : 0; notes.push({t: (b + x) * spb, dur: (d || 0) * spb, g, practice, hole, k, cueT: pc[ci].t, midi: pc[ci].midi, trap: !!tr}); });
     cues.push(...pc); b += p.len;
   };
   if (!st.remix) {
     const gs = st.games, one = gs.length === 1;
-    gs.forEach((g, i) => { segs.push({b0: i ? b : 0, g, label: 'れんしゅう'}); put(g, 0, true); if (one) put(g, 0, true); });
+    gs.forEach((g, i) => { segs.push({b0: i ? b : 0, g, label: 'れんしゅう'}); const P = SCENES[g].pats, tp = P.findIndex(p => p.h.some(h => h[3])); put(g, 0, true, 0); if (one) put(g, 0, true, tp > 0 ? tp : 0); });
     let last = null;
-    const N = SCENES[gs[0]].pats[0].len === 8 ? 9 : 14;
+    const N = SCENES[gs[0]].pats[0].len === 8 ? 6 : 12;
     for (let i = 0; i < N; i++) {
       const g = gs[Math.floor(i / 2) % gs.length], r = i / N;
       if (i === 0) { segs.push({b0: b, g, label: 'ほんばん！'}); b += 4; } else if (g !== last) segs.push({b0: b, g, label: ''});
-      last = g; put(g, r < .3 ? 0 : r < .65 ? 1 : 2, false); if (i === Math.floor(N / 2)) b += 4;
+      last = g; put(g, r < .3 ? 0 : r < .65 ? 1 : 2, false);
     }
   } else {
     const rounds = st.games.length > 5 ? 1 : 2, tot = rounds * st.games.length; let k = 0;
@@ -384,8 +434,9 @@ MODES.cue = {
   pos(n) { return SCENES[n.g].pos(n); },
   down(x, y, t, id) {
     const now = songNow(); G.lastTap = now;
-    const n = findNote(() => true, t), g = n ? n.g : this.seg(now).g, TAP = {capy: 'don', frog: 'lick', mole: 'woosh', puffer: 'psh', bulldog: 'woosh', hurdle: 'woosh', penguin: 'woosh', sumo: 'woosh', dance: 'heyp'}; G.tapN = (G.tapN || 0) + 1;
+    const n = findNote(() => true, t), g = n ? n.g : this.seg(now).g, TAP = {capy: 'woosh', frog: 'lick', mole: 'woosh', puffer: 'psh', bulldog: 'woosh', hurdle: 'woosh', penguin: 'woosh', sumo: 'woosh', dance: 'heyp'}; G.tapN = (G.tapN || 0) + 1;
     if (TAP[g]) sfxK(TAP[g]);
+    if (n && n.trap) { n.res = 'MISS'; n.bonk = true; n.hitT = now; const p = this.pos(n); record('MISS', p[0], p[1], null, n.practice); sfxK('bonk'); G.shake = performance.now(); return; }
     if (n) { const p = this.pos(n); hit(n, t, p[0], p[1]); SCENES[n.g].hitSfx(n); if (n.dur) { n.holding = id; voiceStart(); } }
     else { if (g === 'pig') sfxK('oink', 67); else if (g === 'sloth') { voiceStart(); this.fake = id; } }
   },
@@ -407,7 +458,7 @@ MODES.cue = {
     else if (lb && la < 4) { text(lb, W / 2, H * .42, 36, '#fff', {stroke: 7, a: clamp(1 - (la - 2) / 2, 0, 1)}); }
     if (lb === 'れんしゅう') {
       text(sc.guide, W / 2, top + 36, 15, INK, {stroke: 4, sc: '#fff', w: 700});
-      for (const n of G.notes) if (n.practice && now > n.t - .12 && now < n.t + .25) text('いま！', W / 2, H * .45, 52, '#e8554e', {stroke: 7, sc: '#fff'});
+      for (const n of G.notes) if (n.practice && now > n.t - .12 && now < n.t + .25) text(n.trap ? 'まって！' : 'いま！', W / 2, H * .45, 52, '#e8554e', {stroke: 7, sc: '#fff'});
     }
     const ra = (performance.now() - G.react.t) / 1000;
     const ex = ra < .7 && G.react.res ? (G.react.res === 'MISS' ? 'cry' : 'smile') : (lb === 'ほんばん！' && la < 2 ? 'surprise' : 'angry');
@@ -418,14 +469,14 @@ MODES.cue = {
 
 /* ---------- story ---------- */
 const STAGES = [
-  {id: 's0', kind: 'cue', games: ['hurdle'], char: 'pug', name: 'パグ太の朝練', noJoin: true, bpm: 120, scale: 'major', root: 62, wave: 'square', bg: '#f7e2bd',
-    talk: [['pug', 'angry', 'バンドを組む前に、まずは朝練だ！'], ['pug', 'smile', '「タッ、タッ」の次の拍で、ハードルをジャンプ！']]},
-  {id: 's1', kind: 'cue', games: ['capy'], char: 'capybara', part: '鈴', bpm: 112, scale: 'major', root: 60, wave: 'triangle', bg: '#d9e8d0',
-    talk: [['pug', 'smile', 'よし！ 今日から「はちまきバンド」結成だ！'], ['pug', 'angry', 'まずはメンバー集め。温泉でのんびりしてるあいつに声をかけよう。'], ['capybara', 'surprise', '…え、ぼく？'], ['pug', 'smile', '「カコン」の2拍あとに、流れてきた桶を頭でキャッチできたら合格な！']]},
+  {id: 's0', kind: 'cue', games: ['hurdle'], char: 'pug', name: 'パグ太の朝練', noJoin: true, bpm: 132, scale: 'major', root: 62, wave: 'square', bg: '#f7e2bd',
+    talk: [['pug', 'angry', 'バンドを組む前に、まずは朝練だ！'], ['pug', 'smile', '「タッ、タッ」の次の拍でハードルをジャンプ！ 「ワン！」のときは跳ばずにホネをパクッだ！']]},
+  {id: 's1', kind: 'cue', games: ['capy'], char: 'capybara', part: '鈴', bpm: 124, scale: 'major', root: 60, wave: 'triangle', bg: '#d9e8d0',
+    talk: [['pug', 'smile', 'よし！ 今日から「はちまきバンド」結成だ！'], ['pug', 'angry', 'まずはメンバー集め。温泉でのんびりしてるあいつに声をかけよう。'], ['capybara', 'surprise', '…え、ぼく？'], ['pug', 'smile', '「ポン」と飛んでくるみかんを、次の拍で頭でキャッチ！ 石の「ゴロッ」はよけろよ！'], ['capybara', 'smile', '…みかん、いっぱい乗せたい。']]},
   {id: 's2', kind: 'cue', games: ['frog'], char: 'frog', part: 'カスタネット', bpm: 124, scale: 'major', root: 64, wave: 'square', bg: '#dff0c8',
     talk: [['frog', 'angry', 'ケロ。バンドだと？ ならオレの舌さばきを見てもらおう。'], ['frog', 'smile', 'ハエの「ブン、ブン」を聞いて、次の拍でパクッといけ！']]},
-  {id: 's3', kind: 'cue', games: ['mole'], char: 'mole', part: 'ウッドブロック', bpm: 120, scale: 'major', root: 59, wave: 'square', bg: '#e9dcc0',
-    talk: [['mole', 'surprise', 'モグッ!? 音楽隊？'], ['pug', 'smile', '「ポコ、ポコ」のリズムの続きで、顔を出したところを叩くんだ！'], ['mole', 'cry', 'ぼくが叩かれるの…!?']]},
+  {id: 's3', kind: 'cue', games: ['mole'], char: 'mole', part: 'ウッドブロック', bpm: 128, scale: 'major', root: 59, wave: 'square', bg: '#e9dcc0',
+    talk: [['mole', 'surprise', 'モグッ!? 音楽隊？'], ['pug', 'smile', '「キラッ、キラッ」の次で顔を出して、お宝の王冠をゲットだ！'], ['mole', 'cry', 'でも「ゴンッ」ってハンマーの音がしたら、もぐってないと…!?']]},
   {id: 'r1', kind: 'cue', games: ['capy', 'frog', 'mole'], char: 'pug', remix: true, name: 'リハーサル1', bpm: 124, scale: 'major', root: 62, wave: 'square', bg: '#f7e2bd',
     talk: [['pug', 'smile', 'メンバーが3人増えた！ 初リハーサルだ！'], ['capybara', 'smile', '…ゲームが次々に切り替わるから、よく聞いてね。']]},
   {id: 's4', kind: 'cue', games: ['pig'], char: 'pig', part: 'コーラス', bpm: 116, scale: 'major', root: 60, wave: 'square', bg: '#fbd9dc',

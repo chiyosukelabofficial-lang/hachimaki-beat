@@ -476,6 +476,7 @@ function inputTime(e) {
 }
 function update(now) {
   for (const n of G.notes) {
+    if (!n.res && n.trap && now > n.t + G.W.o) { n.res = 'PERFECT'; n.hitT = now; const p = MODES.cue.pos(n); record('PERFECT', p[0], p[1], null, n.practice); continue; }
     if (!n.res && now > n.t + G.W.o) {
       n.res = 'MISS'; n.hitT = now; const p = MODES[G.c.mode].pos(n); record('MISS', p[0], p[1], null, n.practice);
       if (n.dur) { n.tailDone = true; record('MISS', p[0], p[1], null, n.practice); }
