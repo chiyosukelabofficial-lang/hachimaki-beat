@@ -415,6 +415,7 @@ function startGame(c) {
     cs = buildCue(c.stage, 60 / c.bpm, c.phase); c.mainBars = cs.mainBars;
     song = genSong(c); notes = cs.notes;
     for (const q of cs.cues) song.ev.push({t: q.t, b: q.t / song.spb, type: 'cue', snd: q.snd, dur: q.dur, midi: q.midi});
+    const hs = cs.notes.filter(n => !n.trap).map(n => n.t); song.ev = song.ev.filter(e => e.type !== 'snare' || !hs.some(t => Math.abs(t - e.t) < .03));
     song.ev.sort((a, b) => a.t - b.t);
   } else { song = genSong(c); notes = buildChart(c, song); }
   const L = c.lenient || 1;
@@ -826,6 +827,9 @@ MODES.simon = {
 const lerp = (a, b, t) => a + (b - a) * t;
 function cueSound(snd, w, e) {
   switch (snd) {
+    case 'hoi': tone('sawtooth', 330, w, .09, .22, {to: 440, toT: .05, lp: 1400}); tone('square', 660, w, .06, .05, {lp: 2000}); noiseHit(w + .04, .09, .25, 3000); break;
+    case 'buon': tone('sawtooth', 200, w, .22, .3, {to: 150, toT: .2, lp: 900}); noiseHit(w + .05, .25, .3, 400); break;
+    case 'fake': tone('sawtooth', 330, w, .07, .2, {to: 280, toT: .06, lp: 1200}); break;
     case 'pon': { const m = chordAt(e.t); tone('sine', mtof(m[0] + 24), w, .1, .5, {to: mtof(m[0] + 36), toT: .05, perc: 1}); } noiseHit(w, .03, .15, 2000); break;
     case 'goro': tone('triangle', 110, w, .25, .6, {to: 70, perc: 1}); noiseHit(w, .18, .35, 200); noiseHit(w + .09, .14, .25, 200); break;
     case 'kira': { const m = chordAt(e.t); tone('sine', mtof(m[2] + 36), w, .08, .3, {perc: 1}); tone('sine', mtof(m[1] + 48), w + .04, .12, .22, {perc: 1}); } break;
@@ -888,7 +892,7 @@ function sfxK(k, midi) {
   else if (k === 'heyp') { tone('sawtooth', 520, w, .15, .18, {to: 720, toT: .06, lp: 2000}); }
   else if (k === 'don') { tone('sine', 120, w, .2, .9, {to: 60, perc: 1}); noiseHit(w, .05, .3, 500); }
 }
-const CUELBL = {suika: 'ポーン', pon: 'ポン', goro: 'ゴロッ', kira: 'キラッ', gon: 'ゴンッ', wan: 'ワン！', kakon: 'カコン', buzz: 'ブン', buzz2: 'ブッ', poko: 'ポコ', oink: 'ブー', suu: 'スッ', noo: 'の〜〜', ha: 'ハッ！', ta: 'タン', pi: 'ピッ', hk1: 'ハッ', hk2: 'ケ', hk3: 'ヨイ', hey: 'ヘイ！'};
+const CUELBL = {hoi: 'ほっ', buon: 'どりゃ', fake: 'ほっ…', suika: 'ポーン', pon: 'ポン', goro: 'ゴロッ', kira: 'キラッ', gon: 'ゴンッ', wan: 'ワン！', kakon: 'カコン', buzz: 'ブン', buzz2: 'ブッ', poko: 'ポコ', oink: 'ブー', suu: 'スッ', noo: 'の〜〜', ha: 'ハッ！', ta: 'タン', pi: 'ピッ', hk1: 'ハッ', hk2: 'ケ', hk3: 'ヨイ', hey: 'ヘイ！'};
 const SEQ = {"capy": [{"k": "sq_capy0", "hr": 1.0, "ar": 0.9666666666666667, "ax": 0.4543877429486126, "tip": [0.996551724137931, 0.39666666666666667]}, {"k": "sq_capy1", "hr": 0.99, "ar": 0.9461279461279462, "ax": 0.4409794797914224, "tip": [0.99644128113879, 0.40404040404040403]}, {"k": "sq_capy2", "hr": 1.03, "ar": 0.941747572815534, "ax": 0.39166559553932634, "tip": [0.9965635738831615, 0.39805825242718446]}, {"k": "sq_capy3", "hr": 1.0433333333333332, "ar": 0.8913738019169329, "ax": 0.40036686723308906, "tip": [0.996415770609319, 0.402555910543131]}, {"k": "sq_capy4", "hr": 1.0366666666666666, "ar": 0.977491961414791, "ax": 0.4644185618888521, "tip": [0.9835526315789473, 0.4180064308681672]}, {"k": "sq_capy5", "hr": 1.0766666666666667, "ar": 0.826625386996904, "ax": 0.5467121240841457, "tip": [0.9850187265917603, 0.7770897832817337]}], "sloth": [{"k": "sq_sloth0", "hr": 1.0, "ar": 0.6766666666666666, "ax": 0.5203984460201984, "tip": [0.9950738916256158, 0.66]}, {"k": "sq_sloth1", "hr": 0.8466666666666667, "ar": 1.2992125984251968, "ax": 0.5302575785432425, "tip": [0.996969696969697, 0.11811023622047244]}, {"k": "sq_sloth2", "hr": 0.97, "ar": 0.9896907216494846, "ax": 0.6122916809160314, "tip": [0.9895833333333334, 0.6185567010309279]}, {"k": "sq_sloth3", "hr": 0.9833333333333333, "ar": 1.11864406779661, "ax": 0.4618957531605284, "tip": [0.990909090909091, 0.3525423728813559]}, {"k": "sq_sloth4", "hr": 0.9666666666666667, "ar": 0.8137931034482758, "ax": 0.5206198889634092, "tip": [0.9872881355932204, 0.7586206896551724]}], "puffer": [{"k": "sq_puffer0", "hr": 1.0, "ar": 1.03, "ax": 0.518142614797102, "tip": [0.9870550161812298, 0.5666666666666667]}, {"k": "sq_puffer1", "hr": 0.94, "ar": 1.0141843971631206, "ax": 0.5089376390219442, "tip": [0.986013986013986, 0.5141843971631206]}, {"k": "sq_puffer2", "hr": 1.0633333333333332, "ar": 1.0219435736677116, "ax": 0.5064456187856858, "tip": [0.9877300613496932, 0.47335423197492166]}, {"k": "sq_puffer3", "hr": 1.0966666666666667, "ar": 1.0, "ax": 0.5013119619517925, "tip": [0.9878419452887538, 0.47720364741641336]}, {"k": "sq_puffer4", "hr": 0.8733333333333333, "ar": 1.118320610687023, "ax": 0.44459737318599074, "tip": [0.9863481228668942, 0.11450381679389313]}], "frogj": [{"k": "sq_frogj0", "hr": 1.0, "ar": 0.8566666666666667, "ax": 0.5042610056913757, "tip": [0.9844357976653697, 0.5933333333333334]}, {"k": "sq_frogj1", "hr": 1.17, "ar": 0.7806267806267806, "ax": 0.5228689255020559, "tip": [0.9854014598540146, 0.9344729344729344]}, {"k": "sq_frogj2", "hr": 1.0666666666666667, "ar": 0.928125, "ax": 0.5293371665429144, "tip": [0.9865319865319865, 0.63125]}, {"k": "sq_frogj3", "hr": 0.9933333333333333, "ar": 1.0033557046979866, "ax": 0.502270915500808, "tip": [0.9866220735785953, 0.3624161073825503]}, {"k": "sq_frogj4", "hr": 1.02, "ar": 0.9738562091503268, "ax": 0.4946842833975108, "tip": [0.9865771812080537, 0.673202614379085]}], "peng": [{"k": "sq_peng0", "hr": 1.0, "ar": 0.85, "ax": 0.5091298891244835, "tip": [0.984313725490196, 0.62]}, {"k": "sq_peng1", "hr": 0.9933333333333333, "ar": 0.9194630872483222, "ax": 0.5230788947272111, "tip": [0.9854014598540146, 0.8758389261744967]}, {"k": "sq_peng2", "hr": 0.8666666666666667, "ar": 1.2384615384615385, "ax": 0.4924571401203885, "tip": [0.984472049689441, 0.6923076923076923]}, {"k": "sq_peng3", "hr": 1.0133333333333334, "ar": 0.8421052631578947, "ax": 0.5260128864813041, "tip": [0.984375, 0.3190789473684211]}, {"k": "sq_peng4", "hr": 0.9833333333333333, "ar": 1.2033898305084745, "ax": 0.5021374687011346, "tip": [0.9887323943661972, 0.8135593220338984]}], "mole": [{"k": "sq_mole0", "hr": 0.6566666666666666, "ar": 1.350253807106599, "ax": 0.5363758277949014, "tip": [0.9962406015037594, 0.3096446700507614]}, {"k": "sq_mole1", "hr": 0.7966666666666666, "ar": 1.2426778242677825, "ax": 0.5206510887876707, "tip": [0.9966329966329966, 0.7656903765690377]}, {"k": "sq_mole2", "hr": 1.0, "ar": 0.98, "ax": 0.4782015132370735, "tip": [0.9863945578231292, 0.89]}, {"k": "sq_mole3", "hr": 1.0, "ar": 0.96, "ax": 0.5001675999320052, "tip": [0.9861111111111112, 0.83]}], "tongue": [{"k": "sq_tongue0", "hr": 1.0, "ar": 0.7366666666666667, "ax": 0.481153261662113, "tip": [0.9864253393665159, 0.92]}, {"k": "sq_tongue1", "hr": 1.0, "ar": 0.7633333333333333, "ax": 0.49786061923019814, "tip": [0.9868995633187773, 0.9233333333333333]}, {"k": "sq_tongue2", "hr": 1.0, "ar": 0.7733333333333333, "ax": 0.49894059702435034, "tip": [0.9870689655172413, 0.9266666666666666]}, {"k": "sq_tongue3", "hr": 1.0, "ar": 0.92, "ax": 0.4408006378619119, "tip": [0.9891304347826086, 0.57]}, {"k": "sq_tongue4", "hr": 1.0166666666666666, "ar": 0.9704918032786886, "ax": 0.43415497933091196, "tip": [0.9966216216216216, 0.38688524590163936]}, {"k": "sq_tongue5", "hr": 1.0233333333333334, "ar": 0.8762214983713354, "ax": 0.45252362205286023, "tip": [0.9888475836431226, 0.3583061889250814]}, {"k": "sq_tongue6", "hr": 1.0366666666666666, "ar": 0.8617363344051447, "ax": 0.4454506266284342, "tip": [0.9888059701492538, 0.33440514469453375]}, {"k": "sq_tongue7", "hr": 1.0433333333333332, "ar": 0.7891373801916933, "ax": 0.500463632427212, "tip": [0.9878542510121457, 0.9329073482428115]}], "pugs": [{"k": "sq_pug0", "hr": 1.0, "ar": 0.9866666666666667, "ax": 0.5141455335267793, "tip": [0.9864864864864865, 0.5133333333333333]}, {"k": "sq_pug1", "hr": 1.0233333333333334, "ar": 0.9218241042345277, "ax": 0.5424437641024883, "tip": [0.9858657243816255, 0.5276872964169381]}, {"k": "sq_pug2", "hr": 1.0133333333333334, "ar": 0.9210526315789473, "ax": 0.5438876993825573, "tip": [0.9857142857142858, 0.618421052631579]}, {"k": "sq_pug3", "hr": 1.0, "ar": 1.0, "ax": 0.5067155217520898, "tip": [0.9866666666666667, 0.8833333333333333]}], "bulls": [{"k": "sq_bull0", "hr": 1.0, "ar": 1.0566666666666666, "ax": 0.5094795605330522, "tip": [0.9873817034700315, 0.55]}, {"k": "sq_bull1", "hr": 1.0, "ar": 1.05, "ax": 0.48723655848202835, "tip": [0.9873015873015873, 0.82]}, {"k": "sq_bull2", "hr": 0.95, "ar": 1.0736842105263158, "ax": 0.48987660214138773, "tip": [0.9869281045751634, 0.8245614035087719]}, {"k": "sq_bull3", "hr": 1.1066666666666667, "ar": 1.0271084337349397, "ax": 0.5091627802372475, "tip": [0.9882697947214076, 0.8614457831325302]}], "pigs": [{"k": "sq_pig0", "hr": 1.0, "ar": 1.0, "ax": 0.5192310674404491, "tip": [0.9866666666666667, 0.56]}, {"k": "sq_pig1", "hr": 0.8833333333333333, "ar": 1.0226415094339623, "ax": 0.5356215712271528, "tip": [0.985239852398524, 0.8188679245283019]}, {"k": "sq_pig2", "hr": 1.1033333333333333, "ar": 1.054380664652568, "ax": 0.4943816702464836, "tip": [0.9885386819484241, 0.8761329305135952]}], "dn": {"pug": {"k": "sq_dn_pug0", "hr": 1.0, "ar": 0.5866666666666667, "ax": 0.49339463243101167, "tip": [0.9886363636363636, 0.68]}, "bull": {"k": "sq_dn_bull0", "hr": 1.0, "ar": 0.9066666666666666, "ax": 0.4878223211782087, "tip": [0.9963235294117647, 0.6266666666666667]}, "pig": {"k": "sq_dn_pig0", "hr": 1.0, "ar": 0.68, "ax": 0.4705877302673052, "tip": [0.9950980392156863, 0.6433333333333333]}, "capy": {"k": "sq_dn_capy0", "hr": 1.0, "ar": 0.6933333333333334, "ax": 0.5136722894666899, "tip": [0.9855769230769231, 0.32]}, "sloth": {"k": "sq_dn_sloth0", "hr": 1.0, "ar": 0.9366666666666666, "ax": 0.48048895132286534, "tip": [0.9893238434163701, 0.30666666666666664]}, "dog": {"k": "sq_dn_dog0", "hr": 1.0, "ar": 0.9233333333333333, "ax": 0.49975547580188917, "tip": [0.9891696750902527, 0.43666666666666665]}}, "frogf": [{"k": "sq_frogf0", "hr": 1.0, "ar": 0.63, "ax": 0.4790326513630446, "tip": [0.9841269841269841, 0.29]}, {"k": "sq_frogf1", "hr": 0.9733333333333334, "ar": 0.726027397260274, "ax": 0.44591655969681787, "tip": [0.9811320754716981, 0.2534246575342466]}, {"k": "sq_frogf2", "hr": 1.0, "ar": 1.1533333333333333, "ax": 0.309471399832959, "tip": [0.9884393063583815, 0.26666666666666666]}, {"k": "sq_frogf3", "hr": 0.9966666666666667, "ar": 0.782608695652174, "ax": 0.41074686842105784, "tip": [0.9871794871794872, 0.3110367892976589]}, {"k": "sq_frogf4", "hr": 0.9, "ar": 1.2222222222222223, "ax": 0.5308947014390608, "tip": [0.990909090909091, 0.9814814814814815]}, {"k": "sq_frogf5", "hr": 0.8166666666666667, "ar": 1.0081632653061225, "ax": 0.4425567276328558, "tip": [0.9878542510121457, 0.7551020408163265]}, {"k": "sq_frogf6", "hr": 0.7, "ar": 1.5285714285714285, "ax": 0.46609594403166904, "tip": [0.9875389408099688, 0.5095238095238095]}, {"k": "sq_frogf7", "hr": 0.6566666666666666, "ar": 2.6040609137055837, "ax": 0.4875657067439731, "tip": [0.9941520467836257, 0.7766497461928934]}], "slothc": [{"k": "sq_slothc0", "hr": 1.0, "ar": 0.6766666666666666, "ax": 0.5049477777645587, "tip": [0.9950738916256158, 0.7166666666666667]}, {"k": "sq_slothc1", "hr": 0.6666666666666666, "ar": 1.65, "ax": 0.5141421637048985, "tip": [0.996969696969697, 0.765]}, {"k": "sq_slothc2", "hr": 0.6666666666666666, "ar": 1.815, "ax": 0.4991642163721844, "tip": [0.9862258953168044, 0.84]}, {"k": "sq_slothc3", "hr": 0.6666666666666666, "ar": 1.805, "ax": 0.5006922842957016, "tip": [0.9889196675900277, 0.86]}, {"k": "sq_slothc4", "hr": 0.6766666666666666, "ar": 1.7635467980295567, "ax": 0.5199339886280037, "tip": [0.9860335195530726, 0.916256157635468]}, {"k": "sq_slothc5", "hr": 0.5666666666666667, "ar": 1.8529411764705883, "ax": 0.5949287590778565, "tip": [0.9968253968253968, 0.9]}], "slothT": [{"k": "sq_slothT0", "hr": 1.0, "ar": 0.74, "ax": 0.572314614656056, "tip": [0.9864864864864865, 0.6266666666666667]}], "capyC": [{"k": "sq_capyC0", "hr": 1.0, "ar": 0.79, "ax": 0.47337333548721233, "tip": [0.9831223628691983, 0.3933333333333333]}], "puff2": [{"k": "sq_puff20", "hr": 1.0, "ar": 1.0133333333333334, "ax": 0.4985025362278213, "tip": [0.9868421052631579, 0.4666666666666667]}, {"k": "sq_pg0", "hr": 1.0, "ar": 0.9266666666666666, "ax": 0.504936890431756, "tip": [0.9856115107913669, 0.42]}, {"k": "sq_pg1", "hr": 1.1366666666666667, "ar": 0.8797653958944281, "ax": 0.5036361784505807, "tip": [0.9966666666666667, 0.4574780058651026]}, {"k": "sq_pg2", "hr": 1.17, "ar": 0.8945868945868946, "ax": 0.4980167646057525, "tip": [0.9840764331210191, 0.4586894586894587]}, {"k": "sq_pg3", "hr": 1.1866666666666668, "ar": 0.9438202247191011, "ax": 0.46892411663418976, "tip": [0.9970238095238095, 0.4297752808988764]}, {"k": "sq_pg4", "hr": 1.2166666666666666, "ar": 1.0246575342465754, "ax": 0.46031325023591974, "tip": [0.9893048128342246, 0.4602739726027397]}, {"k": "sq_pg5", "hr": 1.3433333333333333, "ar": 0.9230769230769231, "ax": 0.4956189866847716, "tip": [0.9919354838709677, 0.40198511166253104]}, {"k": "sq_pg6", "hr": 0.7233333333333334, "ar": 1.9585253456221199, "ax": 0.48949653341631566, "tip": [0.9905882352941177, 0.5668202764976958]}, {"k": "sq_pg7", "hr": 1.19, "ar": 1.0364145658263306, "ax": 0.5008394282563591, "tip": [0.9891891891891892, 0.6330532212885154]}], "mole2": [{"k": "sq_mole20", "hr": 1.0, "ar": 0.9423076923076923, "ax": 0.5085515158672466, "tip": [0.9877551020408163, 0.8576923076923076]}, {"k": "sq_mole21", "hr": 0.38076923076923075, "ar": 2.4242424242424243, "ax": 0.45578892931636716, "tip": [0.9833333333333333, 0.696969696969697]}, {"k": "sq_mole22", "hr": 0.5192307692307693, "ar": 1.9407407407407407, "ax": 0.5023390916671129, "tip": [0.9847328244274809, 0.7333333333333333]}, {"k": "sq_mole23", "hr": 0.6038461538461538, "ar": 1.8662420382165605, "ax": 0.5033071033715305, "tip": [0.9965870307167235, 0.7643312101910829]}], "moleP": [{"k": "sq_moleP0", "hr": 1.0, "ar": 0.8692307692307693, "ax": 0.49060796728691786, "tip": [0.9867256637168141, 0.8653846153846154]}, {"k": "sq_moleP1", "hr": 0.9807692307692307, "ar": 0.8823529411764706, "ax": 0.5324478059372473, "tip": [0.9866666666666667, 0.9058823529411765]}, {"k": "sq_moleP2", "hr": 0.8423076923076923, "ar": 1.0182648401826484, "ax": 0.5107682253128688, "tip": [0.9955156950672646, 0.8584474885844748]}], "pengn": [{"k": "sq_pengn0", "hr": 1.0, "ar": 1.0384615384615385, "ax": 0.4498473982889382, "tip": [0.9962962962962963, 0.4576923076923077]}, {"k": "sq_pengn1", "hr": 1.0, "ar": 1.2038461538461538, "ax": 0.4795449863135869, "tip": [0.9968051118210862, 0.4807692307692308]}, {"k": "sq_pengn2", "hr": 0.9769230769230769, "ar": 1.1062992125984252, "ax": 0.46503904877223284, "tip": [0.99644128113879, 0.5039370078740157]}, {"k": "sq_pengn3", "hr": 0.47692307692307695, "ar": 2.596774193548387, "ax": 0.5023128784484562, "tip": [0.984472049689441, 0.6693548387096774]}, {"k": "sq_pengn4", "hr": 0.5192307692307693, "ar": 2.577777777777778, "ax": 0.5128883819512812, "tip": [0.9885057471264368, 0.6814814814814815]}, {"k": "sq_pengn5", "hr": 0.5192307692307693, "ar": 2.7037037037037037, "ax": 0.5175768865310225, "tip": [0.9972602739726028, 0.7555555555555555]}, {"k": "sq_pengn6", "hr": 0.5192307692307693, "ar": 2.948148148148148, "ax": 0.49197269995557075, "tip": [0.9899497487437185, 0.7111111111111111]}, {"k": "sq_pengn7", "hr": 0.7230769230769231, "ar": 1.5372340425531914, "ax": 0.5027717499120841, "tip": [0.986159169550173, 0.19148936170212766]}], "pengP": [{"k": "sq_pengP0", "hr": 1.0, "ar": 0.8846153846153846, "ax": 0.5322059167948537, "tip": [0.9956521739130435, 0.07307692307692308]}, {"k": "sq_pengP1", "hr": 0.7807692307692308, "ar": 1.5073891625615763, "ax": 0.515939908447099, "tip": [0.9901960784313726, 0.5123152709359606]}, {"k": "sq_pengP2", "hr": 0.7423076923076923, "ar": 1.4352331606217616, "ax": 0.5005729757390637, "tip": [0.9963898916967509, 0.17098445595854922]}, {"k": "sq_pengP3", "hr": 1.0653846153846154, "ar": 0.9025270758122743, "ax": 0.4971158544371609, "tip": [0.988, 0.45126353790613716]}], "tub": [{"k": "sq_tub0", "hr": 1.0, "ar": 1.3266666666666667, "ax": 0.4930139109938266, "tip": [0.9899497487437185, 0.57]}, {"k": "sq_tub1", "hr": 0.8933333333333333, "ar": 1.4813432835820894, "ax": 0.4927356144224412, "tip": [0.9899244332493703, 0.5559701492537313]}, {"k": "sq_tub2", "hr": 1.1066666666666667, "ar": 1.2228915662650603, "ax": 0.4991264736034171, "tip": [0.9901477832512315, 0.5903614457831325]}]};
 function sfDraw(f, x, yb, h, o = {}) {
   const im = IM[f.k]; if (!im || !im.complete || !im.naturalWidth) return;
@@ -1109,6 +1113,49 @@ const SCENES = {
       if (push > .3 && (G.byG.bulldog || []).some(n => n.res && n.res !== 'MISS' && now - n.hitT < .2)) text('バチン！', l.px - 20, l.y - l.h * 1.1, 26, '#fff', {stroke: 6, sc: '#e8554e'});
     }},
 
+  mame: {char: 'bulldog', title: '豆はじき', guide: '「ほっ」の次の拍でバシッ！ 「どりゃ」は2拍あと',
+    pats: [{lvl: 0, len: 4, c: [[0, 'hoi'], [2, 'hoi']], h: [[1, 0, 0], [3, 0, 1]]},
+      {lvl: 1, len: 4, c: [[0, 'hoi'], [2, 'hoi'], [2.5, 'hoi']], h: [[1, 0, 0], [3, 0, 1], [3.5, 0, 2]]},
+      {lvl: 2, len: 4, c: [[0, 'hoi'], [.5, 'hoi'], [1, 'hoi'], [2, 'hoi']], h: [[1, 0, 0], [1.5, 0, 1], [2, 0, 2], [3, 0, 3]]},
+      {lvl: 1, len: 4, c: [[0, 'buon'], [2, 'hoi']], h: [[2, 0, 0], [3, 0, 1]]},
+      {lvl: 1, len: 4, c: [[0, 'hoi'], [2, 'fake']], h: [[1, 0, 0], [3, 0, 1, 1]]},
+      {lvl: 2, len: 4, c: [[0, 'hoi'], [2, 'hoi'], [2.5, 'hoi'], [3, 'hoi']], h: [[1, 0, 0], [3, 0, 1], [3.5, 0, 2], [4, 0, 3]]},
+      {lvl: 2, len: 4, c: [[0, 'hoi'], [.5, 'hoi'], [1, 'hoi'], [2, 'buon']], h: [[1, 0, 0], [1.5, 0, 1], [2, 0, 2], [4, 0, 3]]}],
+    chart: [0, 0, 0, 1, 0, 1, 3, 1, 2, 4, 2, 4, 5, 3, 4, 6],
+    practice: [0, 0, 0, 1, 4, 1, 4, 3, 2, 4, 0, 4],
+    L() { const gy = H * .74, h = Math.min(H * .21, 170, W * .44); return {gy, h, bx: W * .19, xs: [W * .66, W * .8, W * .93]}; },
+    hp(l) { return [l.bx + l.h * .55, l.gy - l.h * .55]; },
+    pos() { const l = this.L(), p = this.hp(l); return [p[0], p[1] - 50]; }, cuePos(q) { const l = this.L(), i = (q.i || 0) % 3; return [l.xs[i] - 10, l.gy - 40 - i * l.h * .55 - l.h * .62]; },
+    hitSfx(n) { sfxK('slap'); noiseHit(actx.currentTime, .12, .5, 1800); if (n.snd === 'buon') sfxK('don'); },
+    bean(x, y, r, rot) { ctx.save(); ctx.translate(x, y); ctx.rotate(rot || 0); ctx.beginPath(); ctx.ellipse(0, 0, r, r * .8, 0, 0, 7); ctx.fillStyle = '#d8b06a'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.stroke(); ctx.beginPath(); ctx.moveTo(-r * .3, -r * .1); ctx.quadraticCurveTo(0, r * .3, r * .3, -r * .1); ctx.stroke(); ctx.restore(); },
+    draw(now) {
+      const l = this.L(), ta = tapAge(now), ns = G.byG.mame || [], qs = G.cuesByG.mame || [], ph = ((now / G.song.spb) % 1 + 1) % 1, ra = reactAge();
+      bgSky('#f3e6cc', '#e8d3ad');
+      ctx.strokeStyle = 'rgba(59,47,42,.18)'; ctx.lineWidth = 2; for (let x = 0; x < W; x += 44) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, l.gy); ctx.stroke(); }
+      ctx.fillStyle = '#c9a26b'; ctx.fillRect(0, l.gy, W, H); ctx.fillStyle = INK; ctx.fillRect(0, l.gy - 1.5, W, 3);
+      ellipse(l.bx, l.gy + 30, W * .3, 22, null, '#f6efe0', 5);
+      const TH = ['pug', 'pig', 'frog'];
+      for (let i = 0; i < 3; i++) {
+        let s = 0, fk = false; for (const q of qs) { if ((q.i || 0) % 3 !== i) continue; const d = now - q.t; if (d > -.12 && d < .3) { s = d < 0 ? -(d + .12) / .12 : Math.max(0, spring(d)); fk = q.snd === 'fake'; } }
+        const th = 40 + i * l.h * .55; ctx.fillStyle = '#a8784a'; ctx.fillRect(l.xs[i] - 22, l.gy - th, 44, th); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.strokeRect(l.xs[i] - 22, l.gy - th, 44, th);
+        spr(TH[i], l.xs[i], l.gy - th + 2 - (s > 0 ? s * 18 : 0), l.h * .42, {flip: true, sx: 1 + (s < 0 ? -s * .1 : -s * .06), sy: 1 + (s < 0 ? s * .12 : s * .1), rot: fk ? Math.sin(now * 30) * .08 * Math.abs(s) : s * -.15});
+      }
+      const hp = this.hp(l);
+      for (const n of ns) {
+        if (n.trap || now < n.cueT - .02) continue;
+        const big = n.snd === 'buon', r = big ? 22 : 12, x0 = l.xs[n.thr % 3] - 24, y0 = l.gy - 40 - (n.thr % 3) * l.h * .55 - l.h * .25, span = Math.max(.2, n.t - n.cueT), q = (now - n.cueT) / span;
+        if (!n.res) { if (q <= 1.25) this.bean(lerp(x0, hp[0], q), lerp(y0, hp[1], q) - Math.sin(Math.PI * Math.min(q, 1)) * (big ? 120 : 50), r, q * 9); continue; }
+        const d = now - n.hitT; if (d > 1) continue;
+        if (n.res === 'MISS') this.bean(hp[0] - 20 - d * 120, hp[1] + d * 260 * (1 + d), r, d * 10);
+        else { this.bean(hp[0] + d * 900, hp[1] - d * 520 + d * d * 300, r, d * 30); if (d < .25) text(big ? 'ドーン！' : 'パシッ', hp[0] + 30, hp[1] - 40 - d * 60, big ? 30 : 20, '#fff', {stroke: 6, sc: '#e8554e', a: 1 - d / .25}); }
+      }
+      const BU = SEQ.bulls, bonk = ns.find(n => n.bonk && now - n.hitT < .7), hurt = ns.find(n => !n.trap && n.res === 'MISS' && now - n.hitT < .6);
+      if (hurt) seqPlay(BU, [[3, 0]], 0, l.bx, l.gy + 6, l.h * .9, {flip: true, rot: Math.sin(ra * 24) * .05});
+      else if (ta >= 0 && ta < .26) seqPlay(BU, [[1, 0], [2, .04], [0, .2]], ta, l.bx + Math.sin(Math.PI * clamp(ta / .2, 0, 1)) * 18, l.gy + 6, l.h * .9, {flip: true, fade: .035});
+      else seqPlay(BU, [[0, 0]], 0, l.bx, l.gy + 6, l.h * .9, {flip: true, sy: 1 - .03 * Math.exp(-ph * 5)});
+      if (bonk) text('スカッ', hp[0], hp[1] - 50, 24, '#fff', {stroke: 5, sc: '#8a8a80', a: 1 - (now - bonk.hitT) / .7});
+      if (hurt) text('いてっ', l.bx, l.gy - l.h * 1.05, 24, '#fff', {stroke: 5, sc: '#8a6a4a'});
+    }},
   hurdle: {char: 'pug', title: 'パグ太ダッシュ', guide: '「タン、タン」と助走したら次でジャンプ！ 「ワン！」は跳ばずにホネをパクッ',
     pats: [{lvl: 0, len: 4, c: [[0, 'ta'], [.5, 'ta'], [2, 'ta'], [2.5, 'ta']], h: [[1, 0, 0], [3, 0, 2]]},
       {lvl: 1, len: 4, c: [[0, 'ta'], [.5, 'ta'], [2, 'wan']], h: [[1, 0, 0], [3, 0, 2, 1]]},
@@ -1231,27 +1278,28 @@ const SCN_KEYS = Object.keys(SCENES);
 
 function buildCue(st, spb, phase) {
   const rng = RNG(hash(st.id) + 5), segs = [], cues = [], notes = []; let b = 8;
-  const put = (g, lvl, practice, pi = 0) => {
+  const put = (g, lvl, practice, pi = null, demo = false) => {
     const P = SCENES[g].pats, ok = P.filter(p => p.lvl <= lvl), top = ok.filter(p => p.lvl === Math.max(...ok.map(x => x.lvl)));
-    const p = practice ? P[pi] : (rng() < .6 ? pick(rng, top) : pick(rng, ok));
+    const p = practice || pi != null ? P[pi || 0] : (rng() < .6 ? pick(rng, top) : pick(rng, ok));
     const hole = Math.floor(rng() * 3), grp = cues.length;
-    const pc = p.c.map(([x, snd, d]) => ({t: (b + x) * spb, g, snd, dur: (d || 0) * spb, hole, grp, midi: g === 'pig' ? pick(rng, [64, 67, 69, 72, 74]) : 0}));
-    p.h.forEach(([x, d, ci, tr], k) => { if (ci == null) ci = p.c.length === p.h.length ? k : 0; notes.push({t: (b + x) * spb, dur: (d || 0) * spb, g, practice, hole, k, cueT: pc[ci].t, midi: pc[ci].midi, trap: !!tr, grp, snd: pc[ci].snd}); });
+    const pc = p.c.map(([x, snd, d], i) => ({t: (b + x) * spb, g, snd, dur: (d || 0) * spb, hole, grp, i, midi: g === 'pig' ? pick(rng, [64, 67, 69, 72, 74]) : 0}));
+    p.h.forEach(([x, d, ci, tr], k) => { if (ci == null) ci = p.c.length === p.h.length ? k : 0; notes.push({t: (b + x) * spb, dur: (d || 0) * spb, g, practice, hole, k, cueT: pc[ci].t, midi: pc[ci].midi, trap: !!tr, grp, snd: pc[ci].snd, thr: ci, demo: !!demo}); });
     cues.push(...pc); b += p.len;
   };
   if (phase === 'practice') {
     const g = st.games[0], P = SCENES[g].pats, tp = P.findIndex(p => p.h.some(h => h[3]));
     segs.push({b0: 0, g, label: 'れんしゅう'});
-    for (const k of [0, 0, 1, 1, 0, 1, 0, 1, 0, 1]) put(g, 0, true, k && tp > 0 ? tp : 0);
+    const seq = SCENES[g].practice || [0, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1].map(k => k && tp > 0 ? tp : 0);
+    seq.forEach((k, i) => put(g, 0, true, k, i === 0));
   } else if (!st.remix) {
     const gs = st.games, one = gs.length === 1, solo = one && phase === 'main';
     if (!solo) gs.forEach((g, i) => { segs.push({b0: i ? b : 0, g, label: 'れんしゅう'}); const P = SCENES[g].pats, tp = P.findIndex(p => p.h.some(h => h[3])); put(g, 0, true, 0); if (one) put(g, 0, true, tp > 0 ? tp : 0); });
     let last = null;
-    const N = SCENES[gs[0]].pats[0].len === 8 ? 6 : 12;
+    const CH0 = solo && SCENES[gs[0]].chart, N = CH0 ? CH0.length : SCENES[gs[0]].pats[0].len === 8 ? 6 : 12;
     for (let i = 0; i < N; i++) {
       const g = gs[Math.floor(i / 2) % gs.length], r = i / N;
       if (i === 0) { if (solo) segs.push({b0: 0, g, label: ''}); segs.push({b0: solo ? 8 : b, g, label: 'ほんばん！'}); if (!solo) b += 4; } else if (g !== last) segs.push({b0: b, g, label: ''});
-      last = g; put(g, r < .3 ? 0 : r < .65 ? 1 : 2, false);
+      last = g; if (CH0) put(g, 0, false, CH0[i]); else put(g, r < .3 ? 0 : r < .65 ? 1 : 2, false);
     }
   } else {
     const rounds = st.games.length > 5 ? 1 : 2, tot = rounds * st.games.length; let k = 0;
@@ -1276,6 +1324,7 @@ MODES.cue = {
     const now = songNow(); G.lastTap = now;
     const n = findNote(() => true, t), g = n ? n.g : this.seg(now).g, TAP = {capy: 'woosh', frog: 'lick', mole: 'woosh', puffer: 'psh', bulldog: 'woosh', hurdle: 'woosh', penguin: 'woosh', sumo: 'woosh', dance: 'heyp'}; G.tapN = (G.tapN || 0) + 1;
     if (TAP[g]) sfxK(TAP[g]);
+    if (n && n.demo) return;
     if (n && n.trap) { n.res = 'MISS'; n.bonk = true; n.hitT = now; const p = this.pos(n); record('MISS', p[0], p[1], null, n.practice); sfxK('bonk'); G.shake = performance.now(); return; }
     if (n) { const p = this.pos(n); hit(n, t, p[0], p[1]); SCENES[n.g].hitSfx(n); if (n.fin) { G.finT = performance.now(); G.shake = G.finT; sfxK('kira'); } if (n.dur) { n.holding = id; voiceStart(); } }
     else { if (g === 'pig') sfxK('oink', 67); else if (g === 'sloth') { voiceStart(); this.fake = id; } }
@@ -1289,11 +1338,16 @@ MODES.cue = {
     }
   },
   practice(now, top) {
+    const dm = G.notes.filter(n => n.demo);
+    for (const n of dm) if (!n.res && now >= n.t) { if (n.trap) { n.res = 'PERFECT'; n.hitT = now; } else { const p = this.pos(n); hit(n, n.t, p[0], p[1]); SCENES[n.g].hitSfx(n); G.lastTap = now; } }
+    const dEnd = dm.length ? Math.max(...dm.map(n => n.t)) + .4 : -9;
+    if (now < dEnd) text('お手本 みててね！', W / 2, H * .3, 26, '#fff', {stroke: 6, sc: '#f2a33a'});
+    else if (now < dEnd + 1.2) text('やってみよう！', W / 2, H * .3, 28, '#fff', {stroke: 6, sc: '#4fb3a9', a: 1 - (now - dEnd) / 1.2});
     if (!G.pClear) {
       G.pEval = G.pEval || {}; const by = {};
       for (const n of G.notes) (by[n.grp] = by[n.grp] || []).push(n);
       for (const k of Object.keys(by).map(Number).sort((a, b) => a - b)) {
-        if (G.pEval[k]) continue; const ns = by[k]; if (!ns.every(n => n.res && now - n.hitT > .2)) break;
+        if (G.pEval[k]) continue; const ns = by[k]; if (ns.some(n => n.demo)) { G.pEval[k] = 1; continue; } if (!ns.every(n => n.res && now - n.hitT > .2)) break;
         G.pEval[k] = 1; const ok = ns.every(n => n.res !== 'MISS'); G.pStreak = ok ? (G.pStreak || 0) + 1 : 0; if (ok && ns.some(n => n.trap)) G.pTrap = 1; G.pMsg = {ok, t: now};
       }
       const needT = SCENES[G.c.stage.games[0]].pats.some(p => p.h.some(h => h[3]));
@@ -1333,11 +1387,11 @@ MODES.cue = {
     else if (lb && la < 4) { text(lb, W / 2, H * .42, 36, '#fff', {stroke: 7, a: clamp(1 - (la - 2) / 2, 0, 1)}); }
     if (lb === 'れんしゅう') {
       sc.guide.split('！ ').forEach((s, i, A) => text(s + (i < A.length - 1 ? '！' : ''), W / 2, top + 34 + i * 20, 15, INK, {stroke: 4, sc: '#fff', w: 700}));
-      for (const n of G.notes) if (n.practice && now > n.t - .12 && now < n.t + .25) text(n.trap ? 'まって！' : 'いま！', W / 2, H * .45, 52, '#e8554e', {stroke: 7, sc: '#fff'});
+      for (const n of G.notes) if (n.practice && !n.demo && now > n.t - .12 && now < n.t + .25) text(n.trap ? 'まって！' : 'いま！', W / 2, H * .45, 52, '#e8554e', {stroke: 7, sc: '#fff'});
     }
     const ra = (performance.now() - G.react.t) / 1000;
     const ex = ra < .7 && G.react.res ? (G.react.res === 'MISS' ? 'cry' : 'smile') : (lb === 'ほんばん！' && la < 2 ? 'surprise' : 'angry');
-    this.guide(now, s.g);
+    if (G.c.phase === 'practice') this.guide(now, s.g);
     drawFace(sc.char, ex, 46, H - 46 - SAT * 0, 34);
     if (G.finT) { const fa = (performance.now() - G.finT) / 1000; if (fa < 1.4) { ctx.globalAlpha = Math.max(0, .5 - fa); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; text('キマった！', W / 2, H * .36, 44 * (1 + .3 * Math.max(0, spring(fa))), '#fff', {stroke: 8, sc: '#e8554e', a: clamp(1.4 - fa, 0, 1)}); } }
     if (G.c.phase === 'practice') this.practice(now, top);
@@ -1367,8 +1421,8 @@ const STAGES = [
     talk: [['pug', 'smile', '7人そろった！ 2回目のリハーサルだ！'], ['puffer', 'surprise', 'ぷく、もう本番みたい…']]},
   {id: 's7', kind: 'cue', games: ['penguin'], char: 'penguin', part: 'ギター', bpm: 120, scale: 'minor', root: 60, wave: 'triangle', bg: '#dcecf7',
     talk: [['penguin', 'smile', 'ギターならまかせて。'], ['penguin', 'angry', '笛の「ピッ、ピッ」の次の拍で、お腹ですべり込んでね！']]},
-  {id: 's8', kind: 'cue', games: ['bulldog', 'sumo'], char: 'bulldog', part: '太鼓', bpm: 128, scale: 'minor', root: 57, wave: 'sawtooth', bg: '#f3cdbf',
-    talk: [['bulldog', 'angry', 'どすこい！ 太鼓は張り手が命じゃ。'], ['bulldog', 'smile', '弟子の「ハッ！」の2拍あとに張り手じゃ！'], ['bulldog', 'angry', '「ハッ・ケ・ヨイ」の次で、ぶつかり稽古もあるぞ！']]},
+  {id: 's8', kind: 'cue', games: ['mame'], char: 'bulldog', part: '太鼓', bpm: 120, scale: 'minor', root: 57, wave: 'sawtooth', bg: '#f3cdbf',
+    talk: [['bulldog', 'angry', 'どすこい！ 太鼓は張り手が命じゃ。'], ['bulldog', 'smile', '弟子が「ほっ」と豆を投げたら、次の拍で張り手ではじけ！'], ['bulldog', 'angry', '「どりゃ」の大玉は2拍あと。投げるフリにだまされるなよ！']]},
   {id: 's9', kind: 'cue', games: ['dance'], char: 'dog', part: 'DJ', bpm: 132, scale: 'minor', root: 61, wave: 'sawtooth', bg: '#ecd2c4',
     talk: [['dog', 'angry', 'DJ志望だと？ オレのステップについてこられるか？'], ['pug', 'angry', 'シワ丸の「ヘイ！」を、次の小節でマネすればいいんだな！']]},
   {id: 'fin', kind: 'cue', games: SCN_KEYS, char: 'pug', remix: true, name: 'ファイナルライブ', bpm: 132, scale: 'major', root: 62, wave: 'square', bg: '#f7e2bd',

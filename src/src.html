@@ -415,6 +415,7 @@ function startGame(c) {
     cs = buildCue(c.stage, 60 / c.bpm, c.phase); c.mainBars = cs.mainBars;
     song = genSong(c); notes = cs.notes;
     for (const q of cs.cues) song.ev.push({t: q.t, b: q.t / song.spb, type: 'cue', snd: q.snd, dur: q.dur, midi: q.midi});
+    const hs = cs.notes.filter(n => !n.trap).map(n => n.t); song.ev = song.ev.filter(e => e.type !== 'snare' || !hs.some(t => Math.abs(t - e.t) < .03));
     song.ev.sort((a, b) => a.t - b.t);
   } else { song = genSong(c); notes = buildChart(c, song); }
   const L = c.lenient || 1;
