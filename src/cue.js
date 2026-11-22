@@ -56,6 +56,21 @@ function sfxK(k, midi) {
   else if (k === 'don') { tone('sine', 120, w, .2, .9, {to: 60, perc: 1}); noiseHit(w, .05, .3, 500); }
 }
 const CUELBL = {kakon: 'カコン', buzz: 'ブン', buzz2: 'ブッ', poko: 'ポコ', oink: 'ブー', suu: 'スッ', noo: 'の〜〜', ha: 'ハッ！', ta: 'タッ', pi: 'ピッ', hk1: 'ハッ', hk2: 'ケ', hk3: 'ヨイ', hey: 'ヘイ！'};
+const SEQ = __SEQ__;
+function sfDraw(f, x, yb, h, o = {}) {
+  const im = IM[f.k]; if (!im || !im.complete || !im.naturalWidth) return;
+  const hh = h * f.hr, w = hh * f.ar;
+  ctx.save(); ctx.translate(x, yb); if (o.rot) ctx.rotate(o.rot);
+  ctx.scale((o.sx || 1) * (o.flip ? -1 : 1), o.sy || 1); ctx.globalAlpha = o.a == null ? 1 : o.a;
+  ctx.drawImage(im, -f.ax * w, -hh, w, hh); ctx.restore();
+}
+const sfPt = (f, p, x, yb, h, flip) => { const hh = h * f.hr, w = hh * f.ar; return [x + (flip ? -1 : 1) * (p[0] - f.ax) * w, yb - hh + p[1] * hh]; };
+function seqPlay(fr, steps, t, x, yb, h, o = {}) {
+  let c = 0; for (let k = 0; k < steps.length; k++) if (t >= steps[k][1]) c = k;
+  const fa = c > 0 ? clamp((t - steps[c][1]) / (o.fade || .05), 0, 1) : 1, a0 = o.a == null ? 1 : o.a;
+  if (fa < 1) sfDraw(fr[steps[c - 1][0]], x, yb, h, {...o, a: a0});
+  sfDraw(fr[steps[c][0]], x, yb, h, {...o, a: a0 * fa});
+}
 const MISSPOSE = {pig: 'pig_mud', frog: 'frog_flop', penguin: 'peng_split', mole: 'mole_sun', pug: 'pug_trip'};
 function bgSky(top, bot) { const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, top); g.addColorStop(1, bot); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
 const tapAge = now => now - G.lastTap;
@@ -76,12 +91,18 @@ const SCENES = {
     pats: [{lvl: 0, len: 4, c: [[0, 'kakon']], h: [[2]]}, {lvl: 1, len: 4, c: [[0, 'kakon'], [.5, 'kakon']], h: [[2], [2.5]]}, {lvl: 2, len: 4, c: [[0, 'kakon'], [1, 'kakon']], h: [[2], [3]]}, {lvl: 2, len: 4, c: [[0, 'kakon'], [.5, 'kakon'], [1, 'kakon']], h: [[2], [2.5], [3]]}],
     L() { const wy = H * .64, h = Math.min(H * .36, 300), cx = W * .58; return {wy, h, cx, hy: wy + h * .3 - h * .93}; },
     pos() { const l = this.L(); return [l.cx, l.hy - 40]; }, cuePos() { return [W * .18, H * .5]; }, hitSfx() { sfxK('suzu'); },
+    cap(now, l, ta) {
+      const C = SEQ.capy, x = l.cx, yb = l.wy + l.h * .3, p = charPose(now);
+      if (missing()) { const ra = reactAge(); seqPlay(C, [[5, 0]], 0, x, yb + 4, l.h, {rot: Math.sin(ra * 22) * .05 * (1 - ra / .75)}); return; }
+      if (ta >= 0 && ta < .4) { const up = Math.sin(Math.PI * clamp((ta - .04) / .23, 0, 1)) * l.h * .2; seqPlay(C, [[1, 0], [3, .05], [4, .27], [0, .38]], ta, x, yb - up, l.h); return; }
+      seqPlay(C, [[0, 0]], 0, x, yb, l.h, {sx: p.sx, sy: p.sy, rot: p.rot});
+    },
     bucket(x, y, a) { ctx.save(); ctx.globalAlpha = a; ctx.beginPath(); ctx.moveTo(x - 24, y - 24); ctx.lineTo(x + 24, y - 24); ctx.lineTo(x + 19, y); ctx.lineTo(x - 19, y); ctx.closePath(); ctx.fillStyle = '#d39a5c'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke(); ctx.fillStyle = INK; ctx.fillRect(x - 22, y - 17, 44, 3); ctx.fillRect(x - 20, y - 8, 40, 3); ctx.restore(); },
     draw(now) {
       const l = this.L(), p = charPose(now), ta = tapAge(now);
       bgSky('#f6e3c4', '#f2d6b0');
       ctx.fillStyle = '#c9b9a0'; ctx.beginPath(); ctx.moveTo(0, l.wy); ctx.quadraticCurveTo(W * .3, l.wy - H * .2, W * .6, l.wy); ctx.fill();
-      actor('capybara', l.cx, l.wy + l.h * .3, l.h, now, {lift: 28});
+      this.cap(now, l, ta);
       for (const n of G.byG.capy || []) {
         if (now < n.cueT - .02) continue;
         if (!n.res) { const q = clamp((now - n.cueT) / (n.t - n.cueT), 0, 1.1); this.bucket(lerp(-30, l.cx - 10, q), l.wy - 2 + Math.sin(now * 7 + n.t) * 3, 1); }
@@ -96,8 +117,7 @@ const SCENES = {
   frog: {char: 'frog', title: 'ハエとり', guide: '「ブン、ブン」の次の拍でタップ',
     pats: [{lvl: 0, len: 4, c: [[0, 'buzz'], [1, 'buzz']], h: [[2]]}, {lvl: 1, len: 4, c: [[0, 'buzz2'], [.5, 'buzz2']], h: [[1]]}, {lvl: 2, len: 4, c: [[0, 'buzz'], [1, 'buzz'], [2.5, 'buzz2'], [3, 'buzz2']], h: [[2, 0, 0], [3.5, 0, 2]]}, {lvl: 2, len: 4, c: [[0, 'buzz2'], [.5, 'buzz2'], [2, 'buzz2'], [2.5, 'buzz2']], h: [[1, 0, 0], [3, 0, 2]]}],
     L() { const h = Math.min(H * .26, 220), fx = W * .3, fy = H * .72; return {h, fx, fy, mx: fx + h * .08, my: fy - h * .55}; },
-    A: [{k: 'pose_frog_act', w: 260 / 300, tip: [.97, .41], bx: .34}, {k: 'frog_act2', w: 1.393, tip: [.889, .127], bx: .31}],
-    tip(l, n) { const a = this.A[Math.round(n.t * 8) % 2]; return [l.fx + (a.tip[0] - a.bx) * a.w * l.h, l.fy + 8 - l.h + a.tip[1] * l.h]; },
+    tip(l) { const f = SEQ.tongue[3]; return sfPt(f, f.tip, l.fx, l.fy + 8, l.h); },
     pos() { const l = this.L(); return [l.mx + 30, l.my - 60]; }, cuePos() { return [W * .8, H * .3]; }, hitSfx() { sfxK('gulp'); },
     fly(x, y) { ellipse(x - 5, y - 8, 9, 5, 'rgba(255,255,255,.8)', INK, 1.5); ellipse(x + 5, y - 8, 9, 5, 'rgba(255,255,255,.8)', INK, 1.5); circle(x, y, 7, '#333', INK, 2); },
     draw(now) {
@@ -106,17 +126,17 @@ const SCENES = {
       ctx.fillStyle = '#8fc2b8'; ctx.fillRect(0, H * .62, W, H); ctx.fillStyle = INK; ctx.fillRect(0, H * .62 - 1.5, W, 3);
       for (let i = 0; i < 6; i++) { ctx.strokeStyle = '#6d8f4e'; ctx.lineWidth = 4; const x = W * .62 + i * W * .07; ctx.beginPath(); ctx.moveTo(x, H * .64); ctx.quadraticCurveTo(x + 10, H * .5, x + Math.sin(now * 2 + i) * 6, H * .4 - i % 2 * 20); ctx.stroke(); }
       ellipse(l.fx, l.fy + 6, l.h * .55, l.h * .12, '#7cb35a', INK);
-      const act = (G.byG.frog || []).find(n => n.res && n.res !== 'MISS' && now - n.hitT < .26);
-      if (act) { const d = now - act.hitT, s = Math.max(0, spring(d)), a = this.A[Math.round(act.t * 8) % 2], tp = this.tip(l, act); spr(a.k, l.fx + (.5 - a.bx) * a.w * l.h, l.fy + 8, l.h, {sx: 1 + .06 * s, sy: 1 - .05 * s}); this.fly(tp[0], tp[1] - 4); }
+      const act = (G.byG.frog || []).find(n => n.res && n.res !== 'MISS' && now - n.hitT < .5);
+      const TG = SEQ.tongue;
+      if (act) { const d = now - act.hitT, tp = this.tip(l); seqPlay(TG, [[2, 0], [3, .035], [4, .11], [5, .19], [6, .27], [7, .4]], d, l.fx, l.fy + 8, l.h, {fade: .045}); if (d < .11) this.fly(tp[0], tp[1] - 2); }
+      else if (ta >= 0 && ta < .22 && !missing()) seqPlay(TG, [[2, 0], [3, .03], [2, .13], [0, .19]], ta, l.fx, l.fy + 8, l.h, {fade: .04});
       else actor('frog', l.fx, l.fy + 8, l.h, now, {lift: l.h * .14, tilt: -.12, dx: 10});
       for (const n of G.byG.frog || []) {
         if (now < n.cueT - .02) continue;
-        const tp = this.tip(l, n), path = q => [lerp(W + 30, tp[0], q), lerp(H * .22, tp[1], q) + Math.sin(q * 14) * 22 * (1 - q)];
+        const tp = this.tip(l), path = q => [lerp(W + 30, tp[0], q), lerp(H * .22, tp[1], q) + Math.sin(q * 14) * 22 * (1 - q)];
         if (!n.res) { const q = clamp((now - n.cueT) / (n.t - n.cueT), 0, 1.15); const [x, y] = path(q); this.fly(x, y); }
         else if (n.res === 'MISS') { const d = now - n.hitT; if (d < 1) this.fly(l.mx - d * 300, l.my - d * 80 + Math.sin(d * 30) * 8); }
-        else if (now - n.hitT < .32) { const d = now - n.hitT; if (d > .26) { const k = (d - .26) / .06; this.fly(lerp(tp[0], l.mx, k), lerp(tp[1], l.my, k)); } }
       }
-      if (ta >= 0 && ta < .18 && !missing() && !(G.byG.frog || []).some(n => n.res && n.res !== 'MISS' && now - n.hitT < .26)) { const k = Math.sin(Math.PI * ta / .18), my = l.my - l.h * .14 * Math.max(0, spring(ta)); ctx.strokeStyle = '#e57a8a'; ctx.lineWidth = 9; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(l.mx, my); ctx.lineTo(l.mx + 90 * k, my - 70 * k); ctx.stroke(); ctx.lineCap = 'butt'; }
     }},
   mole: {char: 'mole', title: 'ポコポコたたき', guide: '「ポコ、ポコ」のリズムの続きでタップ',
     pats: [{lvl: 0, len: 4, c: [[0, 'poko'], [1, 'poko']], h: [[2]]}, {lvl: 1, len: 4, c: [[0, 'poko'], [.5, 'poko']], h: [[1]]}, {lvl: 1, len: 4, c: [[0, 'poko'], [1, 'poko'], [2, 'poko']], h: [[3]]}, {lvl: 2, len: 4, c: [[0, 'poko'], [.5, 'poko'], [2, 'poko'], [2.5, 'poko']], h: [[1, 0, 0], [3, 0, 2]]}],
@@ -137,7 +157,7 @@ const SCENES = {
         const hitOk = n.res && n.res !== 'MISS';
         ctx.save(); ctx.beginPath(); ctx.rect(l.xs[n.hole] - l.rx * 1.3, 0, l.rx * 2.6, l.y); ctx.clip();
         const sq = hitOk ? 1 : 0, wob = !n.res ? spring(now - n.t + .3) * .05 : 0;
-        if (n.res) { ctx.restore(); const d = now - n.hitT; spr(sq ? 'mole_dig' : 'mole_sun', l.xs[n.hole], l.y + l.mh * .2, l.mh * (sq ? .75 : .9), {sx: 1 + .1 * Math.max(0, spring(d)), sy: 1 - .1 * Math.max(0, spring(d))}); continue; }
+        if (n.res) { ctx.restore(); const d = now - n.hitT, sp = Math.max(0, spring(d)); seqPlay(SEQ.mole, sq ? [[0, 0]] : [[2, 0], [3, .1], [2, .2], [3, .3]], d, l.xs[n.hole], l.y + l.mh * .2, l.mh * .9, {sx: 1 + .1 * sp, sy: 1 - .1 * sp, fade: .04}); continue; }
         spr('mole', l.xs[n.hole], l.y + l.mh * (1 - q) + l.mh * .1, l.mh, {sy: 1 - wob, sx: 1 + wob});
         ctx.restore();
         if (hitOk) text('★', l.xs[n.hole] + 30, l.y - l.mh, 30, '#f2c12e', {stroke: 4});
@@ -160,7 +180,7 @@ const SCENES = {
       for (const x of [l.px, l.ux]) { ctx.fillStyle = 'rgba(255,240,200,.18)'; ctx.beginPath(); ctx.moveTo(x - 30, 0); ctx.lineTo(x + 30, 0); ctx.lineTo(x + l.h * .6, l.y + 10); ctx.lineTo(x - l.h * .6, l.y + 10); ctx.fill(); ellipse(x, l.y + 6, l.h * .45, 12, 'rgba(255,240,200,.35)'); }
       let lc = -9; for (const q of G.cuesByG.pig || []) if (q.t <= now) lc = q.t;
       const ps = spring(now - lc);
-      spr('pig', l.px, l.y + 6, l.h, {sx: p.sx * (1 + .1 * ps), sy: p.sy * (1 - .14 * ps)});
+      seqPlay(SEQ.pigs, [[1, 0], [0, .16]], now - lc, l.px, l.y + 6 - 14 * Math.max(0, ps), l.h * .95, {flip: true, sx: p.sx * (1 + .06 * ps), sy: p.sy * (1 - .08 * ps), fade: .05});
       actor('pug', l.ux, l.y + 6, l.h, now, {flip: true, noPose: true, lift: 14});
       if (ta >= 0 && ta < .3) text('ブー', l.ux - 30, l.y - l.h - 6 - ta * 40, 22 * (1 + .5 * Math.max(0, spring(ta))), '#fff', {stroke: 5, sc: '#e8557a', a: 1 - ta / .3});
     }},
@@ -179,8 +199,10 @@ const SCENES = {
       const d = lastRes ? now - lastRes.hitT : 9, good = lastRes && lastRes.res !== 'MISS';
       let s = 1 + .12 * Math.min(cnt, 3);
       if (d < .4) s = good ? lerp(1.36, 1, d / .4) : 1.36 - .1 * Math.sin(d * 40);
-      if (lastRes && !good && d < .7) spr('pose_puffer', l.cx, l.cy + l.h * .2, l.h * 1.15, {rot: Math.sin(d * 25) * .06});
-      else spr('puffer', l.cx - (good ? 40 * Math.max(0, spring(d)) : 0), l.cy + l.h * .15 * s, l.h * s, {sx: p.sx * (1 + .06 * Math.max(0, spring(tapAge(now)))), sy: p.sy});
+      const PF = SEQ.puffer;
+      if (lastRes && !good && d < .7) seqPlay(PF, [[1, 0]], 0, l.cx, l.cy + l.h * .2, l.h * 1.1, {rot: Math.sin(d * 25) * .06});
+      else if (good && d < .45) seqPlay(PF, [[4, 0], [0, .32]], d, l.cx - 40 * Math.max(0, spring(d)), l.cy + l.h * .15, l.h * 1.05, {fade: .08});
+      else seqPlay(PF, [[0, 0], [2, .5], [3, 1.5]], cnt >= 3 ? 2 : cnt >= 2 ? 1 : 0, l.cx, l.cy + l.h * .15 * s, l.h * (1 + .03 * Math.min(cnt, 3)), {sx: p.sx * (1 + .06 * Math.max(0, spring(tapAge(now)))), sy: p.sy, fade: .5});
       if (good && d < .6) for (let k = 0; k < 7; k++) circle(l.cx + l.h * .4 + d * 400 + k * 18, l.cy - l.h * .4 + Math.sin(k * 2 + d * 10) * 14, 6 + k % 3 * 3, 'rgba(255,255,255,.6)', INK, 2);
     }},
   sloth: {char: 'sloth', title: 'の〜び合わせ', guide: '「の〜〜」と同じ長さだけ押しっぱなし',
@@ -194,8 +216,10 @@ const SCENES = {
       ctx.fillStyle = '#8a6a4a'; ctx.fillRect(0, H * .2, W, 14); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.strokeRect(-4, H * .2, W + 8, 14);
       let a = 0; for (const q of G.cuesByG.sloth || []) { if (now >= q.t && now < q.t + q.dur + .25) a = now < q.t + q.dur ? clamp((now - q.t) / q.dur, 0, 1) : 1 - (now - q.t - q.dur) / .25; }
       let b = 0; for (const n of G.byG.sloth || []) { if (n.holding != null) b = clamp((now - n.t) / n.dur, 0, 1.2); }
-      spr('sloth', l.ax, l.y + 6, l.h, {sx: p.sx, sy: 1 + .35 * a});
-      if (missing()) spr('pose_sloth', l.bx, l.y + 6, l.h * .85, {flip: true}); else spr('sloth', l.bx, l.y + 6, l.h, {flip: true, sx: p.sx * (1 - .1 * b) * (1 + .08 * spring(reactAge())), sy: (1 + .35 * b) * (1 - .1 * spring(reactAge())), rot: p.rot + Math.sin(now * 20) * .02 * b});
+      const SL = SEQ.sloth, hg = SL[1], sy1 = 1 + .3 * a;
+      sfDraw(hg, l.ax, H * .2 - 4 + l.h * hg.hr * sy1, l.h, {sy: sy1, sx: p.sx});
+      if (missing()) seqPlay(SL, [[4, 0]], 0, l.bx, l.y + 6, l.h * .95, {flip: true, rot: Math.sin(reactAge() * 20) * .04});
+      else seqPlay(SL, [[0, 0], [2, .08], [3, .5]], b, l.bx, l.y + 6, l.h, {flip: true, sx: p.sx * (1 + .08 * spring(reactAge())), sy: (1 + .1 * Math.min(b, 1)) * (1 - .08 * spring(reactAge())), rot: p.rot + Math.sin(now * 20) * .02 * b, fade: .07});
       if (b > 0) text('の〜〜', l.bx, l.y - l.h * (1 + .35 * b) - 20, 22, '#fff', {stroke: 5, sc: '#8a6a4a'});
     }},
   bulldog: {char: 'bulldog', title: 'どすこい張り手', guide: '弟子の「ハッ！」の2拍あとにタップ',
@@ -213,8 +237,9 @@ const SCENES = {
       spr('pug', l.ax, l.y + 6, l.h * .55, {sx: shout ? 1.1 : 1, sy: shout ? .9 : 1});
       const push = ta < 0 ? 0 : ta < .06 ? ta / .06 : Math.max(0, Math.exp(-(ta - .06) * 10) * Math.cos((ta - .06) * 22));
       if (push > .5) { ctx.strokeStyle = 'rgba(59,47,42,.5)'; ctx.lineWidth = 3; for (let k = 0; k < 3; k++) { const y = l.y - l.h * (.3 + k * .2); ctx.beginPath(); ctx.moveTo(l.bx - l.h * .5, y); ctx.lineTo(l.bx - l.h * .2, y); ctx.stroke(); } }
-      if (missing()) spr('pose_bulldog', l.bx, l.y + 6, l.h * .85, {rot: Math.sin(reactAge() * 20) * .05});
-      else spr('bulldog', l.bx + push * W * .1, l.y + 6, l.h, {sx: p.sx * (1 + .08 * push), sy: p.sy * (1 - .08 * push), rot: push * .3 + p.rot});
+      if (missing()) seqPlay(SEQ.bulls, [[3, 0]], 0, l.bx, l.y + 6, l.h * .95, {rot: Math.sin(reactAge() * 20) * .05});
+      else if (ta >= 0 && ta < .3) seqPlay(SEQ.bulls, [[1, 0], [2, .06], [0, .24]], ta, l.bx + push * W * .08, l.y + 6, l.h * .95, {fade: .035});
+      else seqPlay(SEQ.bulls, [[0, 0]], 0, l.bx, l.y + 6, l.h * .95, {sx: p.sx, sy: p.sy, rot: p.rot});
       if (push > .3 && (G.byG.bulldog || []).some(n => n.res && n.res !== 'MISS' && now - n.hitT < .2)) text('バチン！', l.px - 20, l.y - l.h * 1.1, 26, '#fff', {stroke: 6, sc: '#e8554e'});
     }},
 
@@ -240,7 +265,7 @@ const SCENES = {
         this.hd(x, l.gy, rot, a);
       }
       if (trip != null) spr('pug_trip', l.px, l.gy + 8, l.h * .85, {rot: Math.sin(trip * 30) * .05});
-      else if (jump != null) { const y = Math.sin(Math.PI * clamp(jump / .45, 0, 1)) * l.h * 1.0; spr('pug_jump', l.px, l.gy + 4 - y, l.h, {rot: -.12 + jump * .3}); }
+      else if (jump != null) { const y = Math.sin(Math.PI * clamp(jump / .45, 0, 1)) * l.h * 1.0; seqPlay(SEQ.pugs, [[1, 0], [2, .13], [3, .34]], jump, l.px, l.gy + 4 - y, l.h, {rot: -.1 + jump * .22, fade: .06}); }
       else { const hop = ta >= 0 && ta < .3 ? Math.sin(Math.PI * ta / .3) * l.h * .3 : 0, ph = ((now / G.song.spb) % 1 + 1) % 1; spr('pug_dash', l.px, l.gy + 4 - hop - Math.abs(Math.sin(ph * Math.PI * 2)) * 8, l.h, {sx: p.sx, sy: p.sy}); }
     }},
   penguin: {char: 'penguin', title: 'はらすべり', guide: '笛の「ピッ、ピッ」の次の拍でタップ',
@@ -261,14 +286,15 @@ const SCENES = {
         else if (n.res === 'MISS') { const d = now - n.hitT; if (d < .65) { fail = d; slide = null; this.fish(W * .78 + d * 300, l.gy - 10 - d * 200, d * 8); } }
         else { const d = now - n.hitT; if (d < .6) { slide = d; fail = null; } }
       }
-      if (fail != null) spr('peng_split', l.px, l.gy + 6, l.h * .8, {rot: Math.sin(fail * 30) * .04});
+      const PG = SEQ.peng;
+      if (fail != null) seqPlay(PG, [[3, 0], [4, .28]], fail, l.px, l.gy + 6, l.h * .9, {rot: Math.sin(fail * 30) * .04, fade: .07});
       else if (slide != null) {
         const k = Math.sin(Math.PI * clamp(slide / .6, 0, 1)), x = l.px + k * W * .4;
-        spr('peng_slide', x, l.gy + 10, l.h * .7);
+        seqPlay(PG, [[1, 0], [2, .1], [4, .3]], slide, x, l.gy + 8, l.h * .9, {fade: .07});
         for (let i = 0; i < 6; i++) circle(x - l.h * .5 - i * 14, l.gy - 6 - Math.sin(i + slide * 20) * 10, 4, 'rgba(140,195,223,.8)', INK, 1.5);
       } else {
         const ph = ((now / G.song.spb) % 1 + 1) % 1, s = Math.max(0, spring(ta));
-        spr('peng_walk', l.px + s * 20, l.gy + 6, l.h, {rot: Math.sin(ph * Math.PI * 2) * .07, sx: p.sx * (1 + .08 * s), sy: p.sy * (1 - .1 * s)});
+        seqPlay(PG, [[0, 0], [1, .5]], ph, l.px + s * 20, l.gy + 6 - Math.abs(Math.sin(ph * Math.PI)) * 5, l.h, {rot: Math.sin(ph * Math.PI * 2) * .05, sx: p.sx * (1 + .08 * s), sy: p.sy * (1 - .1 * s), fade: .1});
       }
     }},
   sumo: {char: 'bulldog', title: 'ぶつかり稽古', guide: '「ハッ・ケ・ヨイ」の次の拍でタップ',
@@ -285,9 +311,10 @@ const SCENES = {
       for (const y of [-100, -65, -30]) { ctx.beginPath(); ctx.moveTo(-34, y); ctx.lineTo(34, y); ctx.stroke(); } ctx.restore();
       if (hitN && now - hitN.hitT < .3) text('ドスン！', l.tx, l.gy - 160, 28, '#fff', {stroke: 6, sc: '#e8554e'});
       const push = ta < 0 ? 0 : ta < .07 ? ta / .07 : Math.max(0, Math.exp(-(ta - .07) * 7) * Math.cos((ta - .07) * 14));
-      if (missing()) spr('pose_bulldog', l.bx, l.gy + 6, l.h * 1.1, {rot: Math.sin(reactAge() * 20) * .05});
-      else if (push > .15) spr('bull_charge', l.bx + push * (l.tx - l.bx - l.h * .9), l.gy + 6, l.h);
-      else { const ph = ((now / G.song.spb) % 1 + 1) % 1; spr('bull_crouch', l.bx, l.gy + 6, l.h * .85, {sy: 1 - .03 * Math.exp(-ph * 5)}); }
+      const BU = SEQ.bulls;
+      if (missing()) seqPlay(BU, [[3, 0]], 0, l.bx, l.gy + 6, l.h, {rot: Math.sin(reactAge() * 20) * .05});
+      else if (push > .15) seqPlay(BU, [[1, 0], [2, .09]], ta, l.bx + push * (l.tx - l.bx - l.h * .9), l.gy + 6, l.h, {fade: .05});
+      else { const ph = ((now / G.song.spb) % 1 + 1) % 1; seqPlay(BU, [[0, 0]], 0, l.bx, l.gy + 6, l.h * .9, {sy: 1 - .03 * Math.exp(-ph * 5)}); }
     }},
   dance: {char: 'dog', title: 'ダンスバトル', guide: 'シワ丸の「ヘイ！」を次の小節でマネしてタップ',
     pats: [mkCall([0, 1, 2, 3], 0, 'hey'), mkCall([0, 1, 2], 0, 'hey'), mkCall([0, 1.5, 2, 3], 1, 'hey'), mkCall([0, .5, 1, 2.5], 1, 'hey'), mkCall([.5, 1.5, 2.5, 3], 2, 'hey'), mkCall([0, .75, 1.5, 2.5, 3], 2, 'hey')],
@@ -299,7 +326,8 @@ const SCENES = {
       for (let i = 0; i < 5; i++) { const a = now * 1.5 + i * 1.3; ctx.fillStyle = ['rgba(232,85,78,.25)', 'rgba(79,179,169,.25)', 'rgba(242,193,46,.25)'][i % 3]; circle(W / 2 + Math.cos(a) * W * .4, H * .3 + Math.sin(a * 1.3) * H * .15, 50 + i * 8, ctx.fillStyle); }
       for (let i = 0; i < 8; i++) { ctx.fillStyle = i % 2 ? '#e8d5b0' : '#c9a26b'; ctx.fillRect(i * W / 8, l.y, W / 8 + 1, H); } ctx.fillStyle = INK; ctx.fillRect(0, l.y - 1.5, W, 3);
       let lc = -9, cn = 0; for (const q of G.cuesByG.dance || []) if (q.t <= now) { lc = q.t; cn++; }
-      const ds = spring(now - lc);
+      const ds = spring(now - lc), bph = ((now / G.song.spb) % 1 + 1) % 1, bb = Math.exp(-bph * 5), DN = SEQ.dn;
+      [['bull', .12], ['pig', .38], ['capy', .62], ['sloth', .88]].forEach(([k, fx], i) => { const j = Math.max(0, bb) * (i % 2 ? 1 : .7) + Math.max(0, spring(now - lc)) * .6, up = ((i + cn) % 2 ? 1 : -1); sfDraw(DN[k], W * fx, l.y - 44 - 16 * j, l.h * .46, {flip: up < 0, sx: 1 + .05 * j, sy: 1 - .06 * j, a: .92}); });
       spr('dog_dance', l.dx, l.y + 6, l.h, {flip: cn % 2 === 1, sx: 1 + .1 * ds, sy: 1 - .12 * ds});
       const us = spring(ta);
       if (missing()) spr('pug_trip', l.ux, l.y + 6, l.h * .7, {rot: Math.sin(reactAge() * 25) * .05});
