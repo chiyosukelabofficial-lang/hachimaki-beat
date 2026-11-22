@@ -479,6 +479,26 @@ MODES.cue = {
     for (let i = 0; i < 2; i++) circle(W / 2 - 14 + i * 28, top + 80, 9, i < (G.pStreak || 0) ? '#4fb3a9' : '#fff', INK, 2.5);
     if (G.pClear) text('OK！ ほんばんいくよ！', W / 2, H * .3, 30, '#fff', {stroke: 7, sc: '#4fb3a9'});
   },
+  guide(now, g) {
+    const qs = G.cuesByG[g] || [], ns = G.byG[g] || [];
+    const nx = ns.find(n => !n.res && !n.trap && n.t > now - .15);
+    if (nx) { const lc = qs.filter(q => q.grp === nx.grp && q.t <= nx.t + .01).pop(); if (lc && now >= lc.t + .04 && now <= nx.t + .12) { const k = clamp((now - lc.t) / Math.max(.1, nx.t - lc.t), 0, 1); ctx.strokeStyle = `rgba(232,85,78,${.2 + .6 * k})`; ctx.lineWidth = 6 + 12 * k; ctx.strokeRect(0, 0, W, H); } }
+    let grp = null; for (const q of qs) { if (q.t <= now + .35) grp = q.grp; else break; }
+    if (grp == null) return;
+    const items = qs.filter(q => q.grp === grp).map(q => ({t: q.t, k: 'cue', lb: CUELBL[q.snd]})).concat(ns.filter(n => n.grp === grp).map(n => ({t: n.t, k: n.trap ? 'trap' : 'tap', n}))).sort((a, b) => a.t - b.t);
+    const t0 = items[0].t, t1 = items[items.length - 1].t; if (now > t1 + .6) return;
+    const a = clamp(Math.min((now - t0 + .35) / .2, (t1 + .6 - now) / .2), 0, 1), y = H - 140, x0 = W * .2, x1 = W * .86, X = t => t1 > t0 ? lerp(x0, x1, (t - t0) / (t1 - t0)) : (x0 + x1) / 2;
+    ctx.globalAlpha = a; rr(x0 - 36, y - 40, x1 - x0 + 72, 74, 30); ctx.fillStyle = 'rgba(255,255,255,.88)'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
+    ctx.strokeStyle = 'rgba(59,47,42,.3)'; ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+    for (const it of items) {
+      const x = X(it.t), on = now >= it.t - .02, p = on ? Math.max(0, spring(now - it.t)) : 0; ctx.globalAlpha = a;
+      if (it.k === 'cue') { circle(x, y, 12 * (1 + .45 * p), on ? '#f2c12e' : '#fff', INK, 2.5); text(it.lb, x, y - 27, 12, INK, {stroke: 3, sc: '#fff', a}); }
+      else { const res = it.n.res, col = it.k === 'trap' ? '#7a8a90' : '#e8554e', ok = res && res !== 'MISS'; ctx.globalAlpha = a; circle(x, y, 20 * (1 + .3 * p), res ? (ok ? '#4fb3a9' : '#b9b3aa') : '#fff', col, 4);
+        text(res ? (ok ? '◎' : '×') : it.k === 'trap' ? 'まって' : 'タップ', x, y + 1, res ? 20 : 11, res ? '#fff' : col, {a}); }
+    }
+    if (now >= t0 - .05 && now <= t1 + .1) { ctx.globalAlpha = a; ctx.fillStyle = INK; ctx.fillRect(X(clamp(now, t0, t1)) - 2, y - 30, 4, 56); }
+    ctx.globalAlpha = 1;
+  },
   draw(now) {
     const s = this.seg(now), sc = SCENES[s.g];
     sc.draw(now);
@@ -493,6 +513,7 @@ MODES.cue = {
     }
     const ra = (performance.now() - G.react.t) / 1000;
     const ex = ra < .7 && G.react.res ? (G.react.res === 'MISS' ? 'cry' : 'smile') : (lb === 'ほんばん！' && la < 2 ? 'surprise' : 'angry');
+    this.guide(now, s.g);
     drawFace(sc.char, ex, 46, H - 46 - SAT * 0, 34);
     if (G.finT) { const fa = (performance.now() - G.finT) / 1000; if (fa < 1.4) { ctx.globalAlpha = Math.max(0, .5 - fa); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; text('キマった！', W / 2, H * .36, 44 * (1 + .3 * Math.max(0, spring(fa))), '#fff', {stroke: 8, sc: '#e8554e', a: clamp(1.4 - fa, 0, 1)}); } }
     if (G.c.phase === 'practice') this.practice(now, top);
