@@ -97,12 +97,12 @@ function text(s, x, y, size, col, o = {}) {
 function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
 
 // ---------- audio ----------
-let AC, master, NB;
+let AC, master, NB, BGM, KICK, OUT;
 const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
 function initAudio() {
   if (AC) { AC.resume(); return; }
   AC = new (window.AudioContext || window.webkitAudioContext)();
-  const comp = AC.createDynamicsCompressor(); master = AC.createGain(); master.gain.value = .85; master.connect(comp); comp.connect(AC.destination);
+  const comp = AC.createDynamicsCompressor(); master = AC.createGain(); master.gain.value = .85; master.connect(comp); comp.connect(AC.destination); BGM = AC.createGain(); BGM.gain.value = .32; BGM.connect(master); KICK = AC.createGain(); KICK.gain.value = .55; KICK.connect(master);
   NB = AC.createBuffer(1, AC.sampleRate, AC.sampleRate); const d = NB.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   const s = AC.createBufferSource(); s.buffer = AC.createBuffer(1, 1, 22050); s.connect(AC.destination); s.start(0);
 }
@@ -110,13 +110,13 @@ function osc(type, f, t, dur, vol, o = {}) {
   const s = AC.createOscillator(), g = AC.createGain(); s.type = type; s.frequency.setValueAtTime(f, t);
   if (o.to) s.frequency.exponentialRampToValueAtTime(o.to, t + (o.toT || dur));
   let n = s; if (o.lp) { const fl = AC.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = o.lp; s.connect(fl); n = fl; }
-  n.connect(g); g.connect(master); const a = o.a || .004;
+  n.connect(g); g.connect(OUT || master); const a = o.a || .004;
   g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + a); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
   s.start(t); s.stop(t + dur + .05);
 }
 function noise(t, dur, vol, f, type = 'highpass', q = 1) {
   const s = AC.createBufferSource(); s.buffer = NB; const fl = AC.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q;
-  const g = AC.createGain(); s.connect(fl); fl.connect(g); g.connect(master);
+  const g = AC.createGain(); s.connect(fl); fl.connect(g); g.connect(OUT || master);
   g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur); s.start(t, Math.random() * .5); s.stop(t + dur + .02);
 }
 const SND = {
@@ -310,11 +310,12 @@ function build(list, practice) {
     for (let q = 0; q < 4; q++) ev.push({t: t0 + q * SPB, f: SND.kick});
     for (let q = 0; q < 8; q++) ev.push({t: t0 + q * SPB / 2, f: t => SND.hat(t, q % 2 ? .1 : .05)});
     if (!resp && b >= INTRO) [1, 3].forEach(q => ev.push({t: t0 + q * SPB, f: SND.clap}));
-    if (b === 1) for (let q = 0; q < 4; q++) ev.push({t: t0 + q * SPB, f: t => SND.count(t, q)});
+    if (b === 1) for (let q = 0; q < 4; q++) ev.push({t: t0 + q * SPB, f: t => SND.count(t, q), nb: 1});
     [[0, 0, .4], [.75, 12, .2], [1.5, 7, .3], [2, 0, .4], [2.75, 12, .2], [3.5, 7, .3]].forEach(([q, o, d]) => ev.push({t: t0 + q * SPB, f: t => SND.bass(t, ch[0] - 24 + o, d)}));
     if (!resp) [.5, 1.5, 2.5, 3.5].forEach(q => ev.push({t: t0 + q * SPB, f: t => SND.stab(t, ch.map(m => m + 12))}));
     if (b === 0) [[0, 7], [.5, 9], [1, 12], [2, 9], [3, 7]].forEach(([q, d]) => ev.push({t: t0 + q * SPB, f: t => SND.lead(t, 60 + d, .2)}));
   }
+  ev.forEach(e => { if (!e.nb) e.bgm = e.f === SND.kick ? 2 : 1; });
   list.forEach((name, r) => {
     const cb = (INTRO + r * 2) * BAR, rb = cb + BAR, ch = PROG[(INTRO + r * 2) % 4];
     const rd = {name, r, cb, rb, items: []};
@@ -609,7 +610,7 @@ function ev2(rd) { if (['flow', 'quick', 'drop'].includes(J.mech)) return; G.ev.
 setInterval(() => {
   if (!G || G.over) return;
   const la = AC.currentTime + .2 - G.t0;
-  while (G.ei < G.ev.length && G.ev[G.ei].t < la) { const e = G.ev[G.ei++]; e.f(Math.max(AC.currentTime, G.t0 + e.t)); }
+  while (G.ei < G.ev.length && G.ev[G.ei].t < la) { const e = G.ev[G.ei++]; OUT = e.bgm === 2 ? KICK : e.bgm ? BGM : master; e.f(Math.max(AC.currentTime, G.t0 + e.t)); OUT = master; }
 }, 20);
 
 function judge(n, dt, t) {
