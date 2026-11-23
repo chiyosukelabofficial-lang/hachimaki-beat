@@ -24,7 +24,7 @@ h1{font-size:44px;margin:0;letter-spacing:.06em}
 <body>
 <canvas id="cv"></canvas>
 <div id="title" class="scr on">
-  <div class="sub">シュールな掛け持ちリズムゲーム</div>
+  <div class="sub">スポットで来た新人が、なぜか全部さばく</div>
   <h1>リズムで<br>バイト</h1>
   <img src="img/k0.webp" alt="" id="tImg" style="height:150px">
   <div class="sub">きょうのバイト</div><div id="jobs" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:min(300px,80vw)"></div>
@@ -274,7 +274,7 @@ function start(phase) {
   G = Object.assign(S, {phase, t0: AC.currentTime + .25, ei: 0, over: false, tapT: -9, react: null, pStreak: 0, pTrap: 0, pEval: {}, pMsg: null, pClear: 0, sliced: 0, fin: 0, chop: null, stats: {great: 0, good: 0, miss: 0, bonk: 0, pass: 0, dts: []}});
   for (const rd of G.rounds) if (rd.r > 0 || phase === 'main') ev2(rd);
   scene = 'play'; ['#title', '#result'].forEach(s => $(s).classList.remove('on'));
-  $('#hud').style.display = 'flex'; $('#hudL').textContent = phase === 'practice' ? 'れんしゅう' : 'ほんばん'; $('#skip').style.display = phase === 'practice' ? 'block' : 'none';
+  $('#hud').style.display = 'flex'; $('#hudL').textContent = phase === 'practice' ? '研修' : '本番 ' + J.name; $('#skip').style.display = phase === 'practice' ? 'block' : 'none';
 }
 function ev2(rd) { G.ev.push({t: rd.rb - .08, f: SND.wipe}); G.ev.sort((a, b) => a.t - b.t); }
 setInterval(() => {
@@ -285,7 +285,7 @@ setInterval(() => {
 
 function judge(n, dt, t) {
   n.res = Math.abs(dt) < .06 ? 'great' : 'good'; n.hitT = t; n.dt = dt; n.item.cut = t; G.chop = {t, item: n.item};
-  if (!n.demo) { G.stats[n.res]++; G.stats.dts.push(dt); G.sliced++; }
+  if (!n.demo) { G.stats[n.res]++; G.stats.dts.push(dt); G.sliced++; G.combo = (G.combo || 0) + 1; const PR = ['え、初日だよね？', 'できる…', '即戦力だ', '何者だ…？', '店長より速い', '時給、上げとくね']; if (G.combo % 8 === 0 && G.phase === 'main') G.praise = {t, s: PR[Math.min(PR.length - 1, G.combo / 8 - 1)]}; }
   J.hit(AC.currentTime, n.m, n.big);
   if (n.big && n === G.notes.filter(x => !x.trap).slice(-1)[0] && G.phase === 'main') { G.fin = t; SND.ok(AC.currentTime + .05); }
 }
@@ -331,7 +331,8 @@ function finish() {
   const pts = n => n.trap ? (n.res === 'pass' ? 1 : 0) : n.res === 'great' ? 1 : n.res === 'good' ? .6 : 0;
   const score = Math.round(100 * ns.reduce((a, n) => a + pts(n), 0) / Math.max(1, ns.length));
   const rank = score >= 85 ? 'ハイレベル' : score >= 60 ? 'まあまあ' : 'もう一回';
-  const title = score === 100 ? '伝説のバイト' : score >= 95 ? '店長候補' : score >= 85 ? '頼れるバイト' : score >= 70 ? 'ふつうのバイト' : score >= 60 ? '見習い' : score >= 40 ? '皿洗い係' : '帰っていいよ';
+  const title = score === 100 ? '「正社員にならないか？」' : score >= 95 ? '「来月のシフト、全部入れていい？」' : score >= 85 ? '「また来てくれ」' : score >= 70 ? '「助かったよ」' : score >= 60 ? '「まあ、来週も…」' : score >= 40 ? '「…お疲れさま」' : '「今日はもう帰っていいよ」';
+  const MUL = {easy: .8, normal: 1, hard: 1.3, oni: 1.6, god: 2.2}[DIFF], wage = Math.round((score >= 50 ? 1000 + (score - 50) * 30 : 1000 - (50 - score) * 4) * MUL / 10) * 10;
   let combo = 0, best = 0; for (const n of ns) { if (n.res === 'miss' || n.res === 'bonk') combo = 0; else best = Math.max(best, ++combo); }
   const half = ns.length / 2, rate = a => a.length ? Math.round(100 * a.reduce((x, n) => x + pts(n), 0) / a.length) : null;
   const first = rate(ns.slice(0, Math.floor(half))), second = rate(ns.slice(Math.floor(half))), steam = rate(ns.filter(n => isSteam(n.r)));
@@ -339,7 +340,7 @@ function finish() {
   const RK = {'もう一回': 1, 'まあまあ': 2, 'ハイレベル': 3};
   let isBest = false;
   try { const k = 'baito_best_' + JOB + DIFF, old = +localStorage.getItem(k) || 0; if (RK[rank] > old) localStorage.setItem(k, RK[rank]); const ks = 'baito_score_' + JOB + DIFF, os = +localStorage.getItem(ks) || 0; if (score > os) { localStorage.setItem(ks, score); isBest = os > 0 || true; } } catch (e) {}
-  $('#rRank').innerHTML = `${rank}<div style="font-size:15px;font-weight:700;opacity:.75">${DIFFS[DIFF].name} ・ ${score}点 ・「${title}」${isBest ? ' <span style="color:#e0533d">自己ベスト！</span>' : ''}</div>`;
+  $('#rRank').innerHTML = `<div style="font-size:14px;opacity:.7">きょうの時給</div>¥${wage.toLocaleString()}<div style="font-size:16px;font-weight:700">${J.boss}${title}</div><div style="font-size:13px;font-weight:700;opacity:.65">${J.name}・${DIFFS[DIFF].name} ・ ${score}点 ・ ${rank}${isBest ? ' <span style="color:#e0533d">自己ベスト！</span>' : ''}</div>`;
   $('#rImg').src = 'img/' + J.rank[rank === 'ハイレベル' ? 0 : rank === 'まあまあ' ? 1 : 2] + '.webp'; $('#rBoss').textContent = J.boss + 'のひょうか';
   const L = [];
   if (s.miss === 0 && s.bonk === 0) L.push('…ノーミス。合格だ。');
@@ -470,6 +471,9 @@ function frame() {
   hudDraw(t);
 }
 function hudDraw(t) {
+  if (G.react && G.react.t !== G.seenReact) { G.seenReact = G.react.t; G.combo = 0; }
+  if (G.praise && t - G.praise.t < 1.4) { const a = clamp(1.4 - (t - G.praise.t), 0, 1), y = H * .5 + 40 - 10 * Math.min(1, (t - G.praise.t) * 6); ctx.globalAlpha = a; rr(W * .12, y - 26, W * .76, 44, 22); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke(); ctx.globalAlpha = 1; text(`${J.boss}「${G.praise.s}」`, W / 2, y - 4, 17, INK, {a}); }
+  if (G.combo >= 4 && G.phase === 'main') text(`${G.combo} れんぞく`, 60, H * .5 + 22, 14, INK, {stroke: 4});
   if (G.phase === 'practice') {
     const r0 = G.rounds[0], r1 = G.rounds[1];
     if (t < r0.cb) text('拍に合わせて準備…', W / 2, H * .54, 18, INK, {stroke: 5});
