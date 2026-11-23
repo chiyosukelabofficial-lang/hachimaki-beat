@@ -17,19 +17,45 @@ h1{font-size:44px;margin:0;letter-spacing:.06em}
 #hud{position:fixed;top:calc(env(safe-area-inset-top) + 10px);left:12px;right:12px;display:none;justify-content:space-between;align-items:center;pointer-events:none;font-weight:700}
 #hud .btn{pointer-events:auto;font-size:14px;padding:8px 16px}
 .dbtn{display:flex;justify-content:space-between;align-items:center;font-size:17px;padding:11px 20px}.dbtn small{font-size:12px;opacity:.7}.dbtn.god{background:#2b2724;color:#f6c64a}
+.list{justify-content:flex-start;overflow-y:auto;touch-action:pan-y;padding:0 0 20px;gap:12px}
+.hdr{width:100%;box-sizing:border-box;background:#f6c64a;border-bottom:3px solid #2b2724;padding:calc(env(safe-area-inset-top) + 22px) 20px 18px;text-align:left}
+.logo{font-size:34px;font-weight:900;letter-spacing:.04em;line-height:1}.logo b{background:#2b2724;color:#f6c64a;padding:0 8px;margin-left:4px;border-radius:8px}
+.tag{margin-top:8px;font-size:13px;font-weight:700}
+.sec{width:min(360px,92vw);text-align:left;font-weight:900;font-size:15px;margin-top:6px}.sec span{font-size:12px;opacity:.6;font-weight:700}
+#jobs{display:flex;flex-direction:column;gap:12px;width:min(360px,92vw)}
+.jc{display:flex;gap:12px;align-items:center;text-align:left;background:#fff;border:3px solid #2b2724;border-radius:18px;padding:10px 12px;box-shadow:0 4px 0 #2b2724;cursor:pointer;font:inherit;color:inherit}
+.jc:active{transform:translateY(3px);box-shadow:0 1px 0 #2b2724}
+.jc img{width:64px;height:64px;object-fit:contain;background:#f4efe6;border-radius:12px;flex:none}
+.jc .nm{font-size:17px;font-weight:900}.jc .wg{font-size:13px;font-weight:700;color:#e0533d}.jc .ch{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap}
+.chip{font-size:11px;font-weight:700;border:2px solid #2b2724;border-radius:999px;padding:1px 8px;background:#f4efe6}.chip.new{background:#e0533d;color:#fff;border-color:#e0533d}
+.back{align-self:flex-start;margin:calc(env(safe-area-inset-top) + 14px) 0 0 14px;font:inherit;font-weight:900;font-size:15px;background:none;border:none;color:#2b2724;cursor:pointer}
+.dcard{width:min(360px,92vw);background:#fff;border:3px solid #2b2724;border-radius:22px;padding:16px;box-sizing:border-box;text-align:left;box-shadow:0 5px 0 #2b2724}
+.dcard img{display:block;margin:0 auto;height:140px;max-width:100%;object-fit:contain}
+.dname{font-size:26px;font-weight:900;text-align:center;margin-top:6px}.dmeta{text-align:center;font-size:13px;font-weight:700;opacity:.75;margin:4px 0 10px}
+.dsec{font-size:12px;font-weight:900;opacity:.6;margin:12px 0 4px}.dtxt{font-size:14px;line-height:1.6}
+#diffs{display:flex;flex-direction:column;gap:9px}
 .rank{font-size:40px;font-weight:900}
 .card{background:#fff;border:3px solid #2b2724;border-radius:16px;padding:12px 16px;width:min(320px,86vw);box-sizing:border-box;text-align:left;line-height:1.7}
 </style>
 </head>
 <body>
 <canvas id="cv"></canvas>
-<div id="title" class="scr on">
-  <div class="sub">スポットで来た新人が、なぜか全部さばく</div>
-  <h1>リズムで<br>バイト</h1>
-  <img src="img/k0.webp" alt="" id="tImg" style="height:150px">
-  <div class="sub">きょうのバイト</div><div id="jobs" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:min(300px,80vw)"></div>
-  <div id="diffs" style="display:flex;flex-direction:column;gap:10px;width:min(300px,80vw)"></div>
-  <div class="sub">音を出して遊んでね(マナーモードは解除)</div>
+<div id="title" class="scr on list">
+  <div class="hdr"><div class="logo">リズムで<b>バイト</b></div><div class="tag">スキマ時間で、なぜか全部さばく。</div></div>
+  <div class="sec">本日のスポット求人 <span id="jCount"></span></div>
+  <div id="jobs"></div>
+  <div class="sub" style="margin:8px 0 30px">🔈 音を出して遊んでね(マナーモードは解除)</div>
+</div>
+<div id="detail" class="scr list">
+  <button class="back" id="back">‹ 求人一覧</button>
+  <div class="dcard">
+    <img id="tImg" alt="">
+    <div class="dname" id="dName"></div>
+    <div class="dmeta" id="dMeta"></div>
+    <div class="dsec">仕事内容</div><div class="dtxt" id="dDesc"></div>
+    <div class="dsec">シフトを選ぶ</div>
+    <div id="diffs"></div>
+  </div>
 </div>
 <div id="hud"><span id="hudL"></span><button class="btn" id="skip">スキップ ▶</button></div>
 <div id="result" class="scr" style="gap:10px;overflow-y:auto;justify-content:flex-start;padding-top:calc(env(safe-area-inset-top) + 24px)">
@@ -53,7 +79,7 @@ const INK = '#2b2724';
 
 // ---------- images ----------
 const IMG = {};
-['chef0', 'chef1', 'chef2', 'chef3', 'chef4', 'cuc', 'cucS', 'dai', 'daiS', 'car', 'carS', 'mel', 'melS', 'fish', 'fishS', 'duck', 'furn', 'k0', 'k1', 'k2', 'k3', 'k4', 'k5', 'k6', 'k7', 'board', 'm0','m1','m2','m3','m4','cuM','cuL','cuK','mgr','tk','tkS','pc','bc','dr','lobby','counter','p0','p1','p2','p3','p4','bw0','bw1','bw2','bmg','pinU','pinL','ball','shoe','puff','a0','a1','a2','a3','a4','gd0','gd1','drv0','drv1','car0','car1','car2','car3','bike','tow','bdeck','balley','plot','pgate']
+['chef0', 'chef1', 'chef2', 'chef3', 'chef4', 'cuc', 'cucS', 'dai', 'daiS', 'car', 'carS', 'mel', 'melS', 'fish', 'fishS', 'duck', 'furn', 'k0', 'k1', 'k2', 'k3', 'k4', 'k5', 'k6', 'k7', 'board', 'm0','m1','m2','m3','m4','cuM','cuL','cuK','mgr','tk','tkS','pc','bc','dr','lobby','counter','p0','p1','p2','p3','p4','bw0','bw1','bw2','bmg','pinU','pinL','ball','shoe','puff','a0','a1','a2','a3','a4','gd0','gd1','drv0','drv1','car0','car1','car2','car3','bike','tow','bdeck','balley','plot','pgate','s0','s1','s2','s3','s4','tab','cs0','cs1','cs2','it0','it1','it2','nm','ns','nt','ne','no','pl','bill','h0','h1','h2','h3','hs0','hb','hp','htv','hch','hfr','hbg','oboss','obg1','obg2','og0','og1','og2','ocl','o0','o1','o2','o3']
   .forEach(k => { const i = new Image(); i.src = 'img/' + k + '.webp'; IMG[k] = i; });
 function img(k, x, yb, h, o = {}) {
   const i = IMG[k]; if (!i || !i.naturalWidth) return;
@@ -146,6 +172,135 @@ let MAIN = DIFFS.normal.list, STEAM = DIFFS.normal.steam, PRACT = DIFFS.normal.p
 const isSteam = r => STEAM === 'all' ? r > 0 : STEAM.includes(r);
 const INTRO = 2;
 
+// ---------- new mechanics (demo) ----------
+const MR = {
+  mogiri: ['F1', 'F2', 'F1', 'F3', 'F4', 'F5', 'F6', 'F7', 'F5', 'F8'],
+  mogiriP: ['F1', 'F1', 'F3', 'F1', 'F3', 'F3'],
+  bowling: ['Q1', 'Q2', 'Q1', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q5', 'Q8'],
+  bowlingP: ['Q1', 'Q1', 'Q3', 'Q1', 'Q3', 'Q3'],
+  parking: ['C1', 'C2', 'C1', 'C4', 'C3', 'C5', 'C6', 'C2', 'C7', 'C4', 'C5'],
+  parkingP: ['C1', 'C2', 'C4', 'C1', 'C4', 'C2', 'C4'],
+};
+const MRD = {
+  M1: P('0 2'), M2: P('0 1 2'), M3: P('0 2:d'), M4: P('0 1 3'), M5: P('0:d 1 2'), M6: P('0 1 2 3'), M7: P('1 2:d 3'), M8: P('0 1:d 2 3'),
+  F1: '1 2 3 4 5 6 7', F2: '1 2 3 5 6 7', F3: '1 2 3:d 4 5 6 7:d', F4: '1 2 2.5 3 4 5 6 6.5 7', F5: '1 2:d 3 4 5:d 6 7', F6: '1 1.5 2 3 4 4.5 5 6 7', F7: '1 2 3 4:d 5 6:d 7', F8: '1 2 3 4 5 6 7 7.5',
+  Q1: '0 2 4 6', Q2: '0 2 3 4 6', Q3: '0 2:d 4 6', Q4: '0 1 2 4 5 6', Q5: '0 2 4:d 5 6', Q6: '0 1.5 2 4 5.5 6', Q7: '0 1 2:d 3 4 6:d', Q8: '0 .5 2 2.5 4 5 6',
+  B1: [[0, 1], [2, 2]], B2: [[0, 3]], B3: [[0, 2], [2, 'd']], B4: [[0, 1], [1, 1], [2, 3]], B5: [[0, 4]], B6: [[0, 2], [2, 2]], B7: [[0, 'd'], [1, 3]], B8: [[0, 3], [2, 'd'], [3, 1]], B9: [[0, 2], [1.5, 3]],
+  C1: [[0, 2, 'C']], C2: [[0, 1, 'C'], [2, 1, 'C']], C3: [[0, 3, 'C']], C4: [[0, 1, 'C'], [2, 'd']], C5: [[0, 1.5, 'C'], [2, 1, 'C']], C6: [[0, 'd'], [1, 2, 'C']], C7: [[0, 1, 'C'], [1.5, 1, 'C'], [3, .5, 'C']],
+};
+function buildMech(rd, ch, ev, notes, r) {
+  const cb = rd.cb, rb = rd.rb, spec = MRD[rd.name];
+  if (J.mech === 'flow' || J.mech === 'quick') spec.split(' ').forEach((tok, j) => {
+    const [xs, c] = tok.split(':'), x = +xs, trap = c === 'd', nt = cb + (x + (J.mech === 'quick' ? 1 : 0)) * SPB, cT = nt - SPB;
+    const k = J.mech === 'flow' ? (trap ? J.traps[(r + j) % 3] : 'tk') : (trap ? 'shoe' : 'pin'), voice = ch[2] + 12, it = {k, x, j, cueT: cT, round: rd, notes: []};
+    ev.push({t: cT, f: J.mech === 'flow' ? (trap ? SND.buzz : t => SND.voice(t, voice)) : (trap ? SND.thud : t => SND.pins(t, 2))});
+    const n = {t: nt, item: it, trap, r, step: 0, m: ch[j % 3] + 24}; it.notes.push(n); it.note = n; notes.push(n); rd.items.push(it);
+  });
+  if (J.mech === 'drop') spec.split(' ').forEach((tok, j) => {
+    const [xs, c] = tok.split(':'), x = +xs, trap = c === 'd', cT = cb + x * SPB, nt = cT + 2 * SPB;
+    const k = trap ? 'fr' : J.normal[(r + j) % 4], it = {k, x, j, cueT: cT, round: rd, notes: []};
+    ev.push({t: cT, f: trap ? SND.rumble : t => SND.voice(t, ch[2] + 12, 1.5)});
+    const n = {t: nt, item: it, trap, r, m: ch[j % 3] + 24}; it.notes.push(n); it.note = n; notes.push(n); rd.items.push(it);
+  });
+  if (J.mech === 'two') spec.forEach((o, j) => {
+    const k = o.r === 'd' ? J.traps[(r + j) % J.traps.length] : 'tk', K = J.kind[k], voice = ch[2] + 12, it = {k, x: o.x, j, cueT: cb + o.x * SPB, round: rd, notes: []};
+    ev.push({t: it.cueT, f: t => J.cue(k, t, voice)});
+    if (!K.trap) ev.push({t: it.cueT + SPB / 2, f: t => SND.voice(t, voice + 5, 1.1)});
+    (K.trap ? [0] : [0, .5]).forEach((d, s) => { const n = {t: rb + (o.x + d) * SPB, item: it, trap: !!K.trap, r, step: s, m: ch[(j + s) % 3] + 24}; it.notes.push(n); notes.push(n); });
+    it.note = it.notes[0]; rd.items.push(it);
+  });
+  if (J.mech === 'count') spec.forEach(([x, c], j) => {
+    const trap = c === 'd', it = {k: trap ? 'shoe' : 'pin', x, j, n: trap ? 1 : c, up: 0, cueT: cb + x * SPB, round: rd, notes: []};
+    ev.push({t: it.cueT, f: trap ? SND.thud : t => SND.pins(t, c)});
+    for (let i = 0; i < it.n; i++) { const n = {t: rb + (x + i * .5) * SPB, item: it, trap, r, step: i, m: ch[i % 3] + 24}; it.notes.push(n); notes.push(n); }
+    it.note = it.notes[0]; rd.items.push(it);
+  });
+  if (J.mech === 'hold') spec.forEach(([x, d, side], j) => {
+    const trap = d === 'd', it = {k: trap ? 'bike' : 'car' + ((r + j) % 4), x, j, side: trap ? 'C' : side, cueT: cb + x * SPB, round: rd, notes: [], dur: trap ? 0 : d};
+    if (trap) ev.push({t: it.cueT, f: SND.bell});
+    else { ev.push({t: it.cueT, f: t => SND.whistle(t, 72, .14)}); for (let q = .5; q < d - .01; q += .5) ev.push({t: it.cueT + q * SPB, f: t => SND.voice(t, ch[0] + 12, 1.05)}); ev.push({t: it.cueT + d * SPB, f: t => (SND.whistle(t, 72, .06), SND.whistle(t + .09, 72, .06))}); }
+    const n = {t: rb + x * SPB, item: it, trap, r, step: 0, dur: trap ? 0 : d * SPB, side: it.side, m: ch[j % 3] + 24}; it.notes.push(n); notes.push(n); it.note = n; rd.items.push(it);
+  });
+}
+Object.assign(SND, {
+  pins: (t, c) => { SND.roll(t - .12); for (let i = 0; i < c; i++) { osc('triangle', 700 - i * 60, t + i * .09, .07, .35); noise(t + i * .09, .04, .3, 2200); } },
+});
+function holdPress(side) {
+  const t = now(); G.tapT = t;
+  let best = null; for (const n of G.notes) { if (n.res || n.demo) continue; const d = t - n.t; if (Math.abs(d) < .15 && (!best || Math.abs(d) < Math.abs(t - best.t))) best = n; }
+  if (!best) { SND.swish(AC.currentTime); return; }
+  if (best.trap) { best.res = 'bonk'; best.hitT = t; G.stats.bonk++; G.react = {k: 'bonk', t, item: best.item}; best.item.bonk = t; SND.stuck(AC.currentTime); return; }
+  if (false) { best.res = 'miss'; best.hitT = t; G.stats.miss++; best.item.wrong = t; best.item.missed = t; G.react = {k: 'miss', t, item: best.item}; SND.peta(AC.currentTime); return; }
+  best.res = 'hold'; best.pdt = t - best.t; best.item.go = t; G.holding = best; osc('sawtooth', 110, AC.currentTime, best.dur + .2, .08, {lp: 400});
+}
+function holdRelease(auto) {
+  const n = G && G.holding; if (!n) return; G.holding = null;
+  const t = now(), dt = auto ? 0 : t - (n.t + n.dur), e = Math.max(Math.abs(dt), Math.abs(n.pdt || 0));
+  n.res = null; n.item.stopT = t;
+  if (e < .16) judge(n, dt, t); else { n.res = 'miss'; n.hitT = t; G.stats.miss++; n.item.missed = t; n.item.crash = dt > 0; G.react = {k: 'miss', t, item: n.item}; SND.peta(AC.currentTime); }
+}
+function topMech(t, rd, L) {
+  const {bw, bl, base, sz} = L;
+  if (!rd) return;
+  if (J.mech === 'flow') {
+    const cx = W * .5, step = W * .28;
+    ctx.fillStyle = 'rgba(255,255,255,.5)'; rr(cx - sz * .55, base - sz * .9, sz * 1.1, sz * 1.1, 12); ctx.fill(); ctx.strokeStyle = '#e0533d'; ctx.lineWidth = 3; ctx.setLineDash([8, 6]); ctx.stroke(); ctx.setLineDash([]);
+    for (const it of rd.items) {
+      const n = it.note, K = J.kind[it.k], ik = K.img || it.k, h = sz * K.h * 1.4, ph = (t - n.t) / SPB; if (ph < -2.2 || ph > 2) continue;
+      const done = n.res && n.res !== 'miss' && n.res !== 'pass' && n.res !== 'bonk', x = cx - ph * step, y = base - Math.abs(Math.sin(Math.PI * ph)) * 6;
+      if (done) { const d = t - n.hitT; img('tkS', cx, base + d * 400, sz * .55, {a: clamp(1 - d * 2.5, 0, 1)}); if (d < .25) text('ビリッ', cx, base - h - 6, 22, INK, {stroke: 5, a: 1 - d / .25}); continue; }
+      if (it.bonk != null) { img(ik, cx, base, h, {rot: .1}); if (t - it.bonk < .8) text(J.bonkWord, cx, base - h - 10, 18, '#e0533d', {stroke: 5}); continue; }
+      img(ik, x, y, h, {a: clamp(1.8 - Math.abs(ph), 0, 1)});
+      if (it.missed != null && t - it.missed < .5) text('あっ', x, base - h - 8, 20, '#e0533d', {stroke: 5});
+    }
+  }
+  if (J.mech === 'quick') {
+    const cx = W * .5; let cur = null; for (const it of rd.items) if (t >= it.cueT - .05) cur = it;
+    if (cur) {
+      const n = cur.note;
+      if (cur.k === 'shoe') { if (cur.bonk != null) { img('shoe', cx, base, sz * .4, {rot: .2}); if (t - cur.bonk < .8) text(J.bonkWord, cx, base - sz * .6, 22, '#e0533d', {stroke: 5}); } else img('shoe', cx + (n.res ? (t - n.hitT) * 300 : 0), base - Math.abs(Math.sin((t - cur.cueT) * 10)) * 20, sz * .4, {a: n.res === 'pass' ? clamp(1 - (t - n.hitT) * 2, 0, 1) : 1}); }
+      else if (n.res && n.res !== 'miss') { const d = t - n.hitT; [-1, 0, 1].forEach(i => img('pinU', cx + i * sz * .32, base, sz * .9, {sy: 1 - .12 * spring(d)})); if (d < .25) { img('puff', cx, base, sz * .4, {a: 1 - d / .25}); text('スタッ', cx, base - sz * 1.05, 22, INK, {stroke: 5, a: 1 - d / .25}); } }
+      else { const d = t - cur.cueT; [-1, 0, 1].forEach(i => img('pinL', cx + i * sz * .32, base - (i & 1) * 5, sz * .3, {rot: i * .3})); if (d < .3) img('puff', cx, base, sz * .5, {a: 1 - d / .3}); if (n.res === 'miss') text('…', cx, base - sz * .7, 26, INK, {stroke: 5}); }
+    }
+  }
+  if (J.mech === 'two') for (const it of rd.items) {
+    if (t < it.cueT + FLY) continue; const K = J.kind[it.k], x = slotX(it.x, bl, bw), h = sz * K.h * 1.25, ik = K.img || it.k, [a, b] = it.notes;
+    if (it.bonk != null) { img(ik, x, base, h, {rot: .1}); if (t - it.bonk < 1) text(J.bonkWord, x, base - h - 14, 20, '#e0533d', {stroke: 5}); continue; }
+    if (K.trap) { if (a.res === 'pass') { const d = t - a.hitT; img(ik, x, base + d * 300, h, {a: clamp(1 - d * 2, 0, 1)}); } else img(ik, x, base, h); continue; }
+    if (b && b.res && b.res !== 'miss') { const d = t - b.hitT; img('tkS', x, base + d * 380, sz * .5, {a: clamp(1 - d * 2, 0, 1)}); if (d < .3) text('どうぞ', x, base - h - 8, 20, INK, {stroke: 5, a: 1 - d / .3}); continue; }
+    if (a.res && a.res !== 'miss') { const d = t - a.hitT; img('tkS', x, base, sz * .5, {sx: 1 + .1 * spring(d)}); if (d < .25) text('ビリッ', x, base - h - 8, 22, INK, {stroke: 5, a: 1 - d / .25}); if (b && b.res === 'miss') text('返して…', x, base - h - 8, 16, '#e0533d', {stroke: 4}); continue; }
+    img(ik, x, base, h, {rot: it.missed ? Math.sin((t - it.missed) * 20) * .05 : 0});
+  }
+  if (J.mech === 'count') for (const it of rd.items) {
+    if (t < it.cueT) continue; const x = W * (.22 + .56 * it.x / 3);
+    if (it.k === 'shoe') { const n = it.notes[0]; if (it.bonk != null) { img('p4', x, base, sz * .9); continue; } img('shoe', x + (n.res === 'pass' ? (t - n.hitT) * 200 : 0), base, sz * .32, {a: n.res === 'pass' ? clamp(1 - (t - n.hitT) * 2, 0, 1) : 1}); continue; }
+    for (let i = 0; i < it.n; i++) {
+      const n = it.notes[i], px = x + (i - (it.n - 1) / 2) * sz * .3, up = n.res && n.res !== 'miss';
+      if (up) { const d = t - n.hitT; img('pinU', px, base, sz * .85, {sy: 1 - .12 * spring(d)}); if (d < .25) img('puff', px, base, sz * .25, {a: 1 - d / .25}); }
+      else img('pinL', px, base - (i % 2) * 6, sz * .28, {rot: (i % 2 ? .3 : -.25)});
+    }
+    if (t - it.cueT < .5) text(`×${it.n}`, x, base - sz * .8, 24, '#e0533d', {stroke: 5, a: 1 - (t - it.cueT) / .5});
+  }
+  if (J.mech === 'hold') {
+    const lx = W * .5, rx = W * .5, sy = base - sz * .7;
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.strokeRect(lx - sz * .32, sy - sz * .15, sz * .64, sz * .95);
+    for (const it of rd.items) {
+      if (t < it.cueT) continue;
+      if (it.k === 'bike') { const n = it.notes[0], d = n.res ? t - n.hitT : 0; img('bike', W * .5, base + sz * .3 - d * 300, sz * .5, {a: n.res === 'pass' ? clamp(1 - d, 0, 1) : 1}); if (it.bonk != null && t - it.bonk < 1) text(J.bonkWord, W * .5, base - sz * .5, 20, '#e0533d', {stroke: 5}); continue; }
+      const n = it.notes[0], tx = lx, h = sz * .62, startY = base + sz * .9;
+      if (it.stopT != null && t - it.stopT > .7) continue;
+      let p = 0; if (it.go != null) p = clamp((Math.min(t, it.stopT || t) - it.go) / (n.dur || .3), 0, 1.4); if (n.demo && t >= n.t) p = clamp((t - n.t) / n.dur, 0, 1);
+      if (n.res === 'great' || n.res === 'good') p = 1;
+      const y = lerp(startY, sy + h * .85, Math.min(p, 1)) - (p > 1 ? (p - 1) * 40 : 0);
+      img(it.k, tx, y, h, {rot: it.wrong != null ? Math.sin((t - it.wrong) * 30) * .1 : 0});
+      if (it.crash && t - it.stopT < .8) text('ゴンッ', tx, sy - 10, 24, '#e0533d', {stroke: 5});
+      if (n.res === 'great' || n.res === 'good') { const d = t - n.hitT; if (d < .4) text('キッ', tx, sy - 10, 24, INK, {stroke: 5, a: 1 - d / .4}); }
+      if (it.wrong != null && t - it.wrong < .8) text('逆！', tx, y - h - 10, 24, '#e0533d', {stroke: 5});
+      if (it.go != null && !n.res) text('オーライ…', tx + sz * .6, y - h * .5, 16, INK, {stroke: 4});
+    }
+  }
+}
+
 function build(list, practice) {
   const ev = [], rounds = [], notes = [];
   const bars = INTRO + list.length * 2 + 1;
@@ -164,6 +319,7 @@ function build(list, practice) {
   list.forEach((name, r) => {
     const cb = (INTRO + r * 2) * BAR, rb = cb + BAR, ch = PROG[(INTRO + r * 2) % 4];
     const rd = {name, r, cb, rb, items: []};
+    if (J.mech) { buildMech(rd, ch, ev, notes, r); rounds.push(rd); return; }
     let ti = 0; ROUND[name].forEach((o0, j) => {
       const o = {x: o0.x, k: o0.r === 'd' ? J.traps[(r + ti++) % J.traps.length] : o0.r === 'm' ? J.big : J.normal[(o0.i + r) % J.normal.length]};
       const K = J.kind[o.k], cT = cb + o.x * SPB, voice = ch[2] + 12;
@@ -175,7 +331,7 @@ function build(list, practice) {
     rounds.push(rd);
   });
   ev.sort((a, b) => a.t - b.t); notes.sort((a, b) => a.t - b.t);
-  if (practice) rounds[0].items.forEach(x => x.note.demo = 1);
+  if (practice) rounds[0].items.forEach(x => (x.notes || [x.note]).forEach(n => n.demo = 1));
   return {ev, rounds, notes, end: bars * BAR};
 }
 Object.assign(SND, {
@@ -214,31 +370,207 @@ const JOBS = {
     actor: (s) => s.tap != null ? (s.tap < .06 ? 'k3' : s.tap < .16 ? 'k4' : s.tap < .28 ? 'k5' : 'k6') : s.near ? 'k1' : 'k0', actorAR: 235 / 320,
     fog: {col: '#fbfaf7', a: .82, msg: '湯気で見えない！ 覚えたリズムで', name: '湯気'},
     rank: ['chef4', 'chef0', 'k7'], lines: {bonk: n => `アヒルを${n}回切ろうとしたな。`, ok: 'アヒルは、ちゃんと聞こえていた。', early: '包丁が少し早い。リズムを待て。', late: '包丁が少し遅い。迷うな。', fog: '湯気で迷ったな。耳で覚えろ。', fin: '最後のスイカ、悪くなかった。'}},
-  mogiri: {name: '映画館', boss: '支配人', verb: 'もぎる', trapName: 'チケット以外', trapHint: '「ブッブー」はチケットじゃない', next: 'つぎ、もぎるぞ', icon: 'm0',
+  mogiri: {name: '映画館', boss: '支配人', verb: 'もぎる', trapName: 'チケット以外', trapHint: '赤い枠に来たらもぎる。「ブッブー」は見送る', next: 'つぎ、もぎるぞ', icon: 'm0',
     kind: {tk: {h: .5, lbl: 'どうぞ'}, tkG: {h: .66, img: 'tk', lbl: '団体で', big: 1}, pc: {h: .55, lbl: 'これ？', trap: 1}, bc: {h: .5, lbl: 'これ？', trap: 1}, dr: {h: .8, lbl: 'これ？', trap: 1}},
-    normal: ['tk'], traps: ['pc', 'bc', 'dr'], big: 'tkG', fly: 'throw', top: 'counter', topFill: '#e9dcc7',
+    normal: ['tk'], traps: ['pc', 'bc', 'dr'], big: 'tkG', fly: 'throw', top: 'counter', topFill: '#e9dcc7', mech: 'flow',
     cue: (k, t, v) => J.kind[k].trap ? SND.buzz(t) : k === 'tkG' ? (SND.voice(t, v - 5, 1.1), SND.voice(t + SPB / 2, v - 5, 1.1)) : SND.voice(t, v),
     hit: (t, m) => SND.rip(t, m), done: () => 'tkS', doneH: .5, word: ['ビリッ', 'ビリリッ！'], bonkWord: '…もぎっちゃった',
     actor: (s) => s.bonk ? 'm3' : s.tap != null ? (s.tap < .22 ? 'm2' : 'm0') : s.near ? 'm1' : s.fin ? 'm4' : 'm0',
     fog: {col: '#1a1626', a: .9, msg: '上映中で暗い！ 覚えたリズムで', name: '暗がり'},
     rank: ['m4', 'mgr', 'm3'], lines: {bonk: n => `チケット以外を${n}回もぎったな。`, ok: '診察券も名刺も、ちゃんと見分けていた。', early: 'もぎるのが少し早い。', late: 'もぎるのが少し遅い。お客様が待っている。', fog: '暗がりで迷ったな。', fin: '最後の団体さま、見事だった。'}},
-  bowling: {name: 'ボウリング場', boss: '店長', verb: '立てる', trapName: '靴', trapHint: '「ポテッ」は靴。さわらない', next: 'つぎ、立てるぞ', icon: 'p0',
+  bowling: {name: 'ボウリング場', boss: '店長', verb: '立てる', trapName: '靴', trapHint: '「カコーン」の1拍あとに立てる', next: 'つぎ、立てるぞ', icon: 'p0',
     kind: {pin: {h: .2, lbl: 'カコーン'}, pinB: {h: .26, img: 'pinL', lbl: 'ガッシャーン', big: 1}, shoe: {h: .26, lbl: 'ポテッ', trap: 1}},
-    normal: ['pin'], traps: ['shoe'], big: 'pinB', fly: 'drop', top: 'bdeck', topFill: '#3a3446', base: .86,
+    normal: ['pin'], traps: ['shoe'], big: 'pinB', fly: 'drop', top: 'bdeck', topFill: '#3a3446', base: .86, mech: 'quick',
     cue: (k, t) => k === 'shoe' ? SND.thud(t) : k === 'pinB' ? (SND.roll(t), SND.crash(t + .1, 6)) : (SND.roll(t), SND.crash(t + .05, 1)),
     hit: (t, m) => SND.clack(t, m), done: () => 'pinU', doneH: .62, word: ['コトッ', 'スタッ！'], bonkWord: 'くさっ…',
     actor: (s) => s.miss ? 'p3' : s.bonk ? 'p4' : s.tap != null ? (s.tap < .25 ? 'p2' : 'p0') : s.near ? 'p1' : 'p0',
     fog: {col: '#241b33', a: .88, msg: 'ミラーボールタイム！ 覚えたリズムで', name: 'ミラーボール', disco: 1},
     rank: ['bmg', 'p0', 'p3'], lines: {bonk: n => `靴を${n}回立てようとしたな。`, ok: '靴には手を出さなかった。えらい。', early: '立てるのが少し早い。', late: '立てるのが少し遅い。次のボールが来るぞ。', fog: 'ミラーボールで迷ったな。', fin: '最後のストライク後、完璧だった。'}},
-  parking: {name: '駐車場', boss: '先輩', verb: '止める', trapName: '自転車', trapHint: '「チリンチリン」は自転車。止めない', next: 'つぎ、止めるぞ', icon: 'a0',
+  parking: {name: '駐車場', boss: '先輩', verb: '止める', trapName: '自転車', trapHint: '笛で押す。「ピピッ」で離す', next: 'つぎ、止めるぞ', icon: 'a0',
     kind: {car0: {h: .62, lbl: 'ピッ'}, car1: {h: .62, lbl: 'ピッ'}, car2: {h: .62, lbl: 'ピッ'}, car3: {h: .62, lbl: 'ピッ'}, tow: {h: .74, lbl: 'ピー', big: 1}, bike: {h: .55, lbl: 'チリン', trap: 1}},
-    normal: ['car0', 'car1', 'car2', 'car3'], traps: ['bike'], big: 'tow', fly: 'drive', top: 'plot', topFill: '#a9a3a6', base: .78, stand: 1,
+    normal: ['car0', 'car1', 'car2', 'car3'], traps: ['bike'], big: 'tow', fly: 'drive', top: 'plot', topFill: '#a9a3a6', base: .78, stand: 1, mech: 'hold',
     cue: (k, t, v) => k === 'bike' ? SND.bell(t) : k === 'tow' ? SND.whistle(t, v, .5) : SND.whistle(t, v),
     hit: (t, m) => SND.squeal(t, m), done: k => k, doneH: 0, word: ['キッ', 'キキーッ！'], bonkWord: 'え、ぼく？',
     actor: (s) => s.miss ? 'a3' : s.bonk ? 'a4' : s.tap != null ? (s.tap < .25 ? 'a2' : 'a0') : s.near ? 'a1' : 'a0',
     fog: {col: '#141a2b', a: .9, msg: '夜になった！ 覚えたリズムで', name: '夜'},
     rank: ['gd1', 'gd0', 'a3'], lines: {bonk: n => `自転車を${n}回止めたな。`, ok: '自転車は、ちゃんと通してあげた。', early: '止めるのが少し早い。', late: '止めるのが少し遅い。ぶつかるぞ。', fog: '夜で迷ったな。', fin: 'レッカー車、きれいに止めた。'}},
 };
+// ---------- new layouts: 左右 / 画面切り替え / 落ちてくる ----------
+Object.assign(SND, {
+  order: (t, m) => { osc('sine', mtof(m + 12), t, .08, .25); osc('sine', mtof(m + 19), t + .07, .12, .22); },
+  pon: t => { osc('sine', 392, t, .5, .35); osc('sine', 784, t, .3, .08); },
+  nigiri: (t, m) => { noise(t, .06, .4, 900, 'lowpass'); osc('triangle', mtof(m), t, .07, .4); },
+  koto: (t, m) => { osc('triangle', mtof(m - 12), t, .06, .4); noise(t, .03, .2, 1200, 'lowpass'); },
+  sweep: t => { noise(t, .07, .25, 5000); noise(t + .09, .07, .25, 5000); },
+  dota: t => { [0, .08, .16].forEach(o => osc('triangle', 110, t + o, .05, .4)); },
+  baa: (t, m) => { osc('sawtooth', mtof(m - 12), t, .18, .3, {to: mtof(m), lp: 1500}); noise(t, .1, .3, 2500); },
+  rumble: t => { osc('sawtooth', 55, t, .45, .3, {lp: 200}); noise(t, .4, .3, 300, 'lowpass'); },
+  catch: (t, m) => { osc('sine', 140, t, .1, .5, {to: 80}); osc('triangle', mtof(m), t, .05, .3); },
+});
+const NIG = {mg: ['#d8434b'], sa: ['#f39a5b', 1], tm: ['#f2cf4a', 0, 1], eb: ['#f4a08a', 0, 0, 1], ot: ['#f1b9b4']};
+function nigiri(k, x, y, s, o = {}) {
+  const ik = {mg: 'nm', sa: 'ns', tm: 'nt', eb: 'ne', ot: 'no'}[k];
+  if (IMG[ik] && IMG[ik].naturalWidth) { if (o.plate) img('pl', x, y + s * .3, s * 1.1, {a: o.a, sy: .55}); img(ik, x, y, s * (k === 'ot' ? 1.5 : 1.15), {a: o.a}); return; }
+  const c = NIG[k] || NIG.mg; ctx.save(); ctx.globalAlpha = o.a == null ? 1 : o.a; ctx.translate(x, y); ctx.lineWidth = 2.5; ctx.strokeStyle = INK;
+  if (o.plate) { ctx.beginPath(); ctx.ellipse(0, 2, s * .9, s * .26, 0, 0, 7); ctx.fillStyle = '#fff'; ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.ellipse(0, 2, s * .9, s * .26, 0, 0, 7); ctx.strokeStyle = '#4a78b5'; ctx.lineWidth = 3; ctx.stroke(); ctx.strokeStyle = INK; ctx.lineWidth = 2.5; }
+  rr(-s * .42, -s * .3, s * .84, s * .3, s * .14); ctx.fillStyle = '#fbf8f1'; ctx.fill(); ctx.stroke();
+  rr(-s * .52, -s * .48, s * 1.04, s * .24, s * .12); ctx.fillStyle = c[0]; ctx.fill(); ctx.stroke();
+  if (c[1]) { ctx.strokeStyle = 'rgba(255,255,255,.8)'; for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(i * s * .18 - s * .05, -s * .46); ctx.lineTo(i * s * .18 + s * .05, -s * .26); ctx.stroke(); } }
+  if (c[2]) { ctx.fillStyle = '#2f3b2c'; ctx.fillRect(-s * .1, -s * .48, s * .2, s * .5); }
+  if (c[3]) { ctx.fillStyle = '#e0533d'; ctx.beginPath(); ctx.moveTo(s * .5, -s * .38); ctx.lineTo(s * .7, -s * .55); ctx.lineTo(s * .7, -s * .2); ctx.closePath(); ctx.fill(); ctx.strokeStyle = INK; ctx.stroke(); }
+  ctx.restore();
+}
+function emo(s, x, y, size, o = {}) { ctx.save(); ctx.globalAlpha = o.a == null ? 1 : o.a; ctx.translate(x, y); if (o.rot) ctx.rotate(o.rot); ctx.scale((o.sx || 1) * (o.flip ? -1 : 1), o.sy || 1); ctx.font = `${size}px system-ui,"Apple Color Emoji","Noto Color Emoji",sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillText(s, 0, 0); ctx.restore(); }
+function fogOver(t, rd, x, y, w, h) {
+  if (!rd || !isSteam(rd.r) || G.phase !== 'main') return;
+  const a = clamp((t - rd.rb + .1) / .25, 0, 1); if (!a) return; ctx.save(); ctx.globalAlpha = a * J.fog.a; ctx.fillStyle = J.fog.col; ctx.fillRect(x, y, w, h); ctx.restore(); text(J.fog.msg, x + w / 2, y + h * .4, 16, INK, {stroke: 5, a});
+}
+function bitkun(x, y, s, t, o = {}) {
+  const ta = t - G.tapT, jump = ta >= 0 && ta < .2 ? Math.sin(Math.PI * ta / .2) * s * .15 : 0;
+  emo(o.e || '🧑‍🍳', x, y - jump, s, {sy: 1 - .03 * bob(t)});
+}
+const nearMiss = () => G.react && G.react.k === 'miss' && now() - G.react.t < .6;
+
+// 1) 回転寿司:左右分割(左=お客さん・注文 / 右=握り場)
+function sushiScene(t, rd) {
+  const L = W * .5, top = H * .12, bot = H * .6;
+  ctx.fillStyle = '#f3e6cf'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#e9d6b4'; ctx.fillRect(0, 0, W, top); ctx.fillStyle = '#3d5a80'; for (let i = 0; i < 5; i++) { rr(i * W / 5 + 3, -10, W / 5 - 6, top * .75, 8); ctx.fill(); }
+  // left: customers + tablet
+  ctx.fillStyle = '#fff8ea'; ctx.fillRect(0, top, L, bot - top);
+  const cur = rd ? rd.items.filter(it => t >= it.cueT && t < it.cueT + .3).pop() : null;
+  ['cs0', 'cs1', 'cs2'].forEach((e, i) => { const on = cur && cur.j % 3 === i, j = on ? spring(t - cur.cueT) * 8 : 0; img(e, L * (.2 + i * .3), bot - H * .07 - j, H * .1, {sy: 1 - .03 * bob(t + i * .1), a: !cur || on ? 1 : .75}); });
+  ctx.fillStyle = '#a87a4f'; ctx.fillRect(0, bot - H * .075, L, H * .03);
+  { const ti = IMG.tab; if (ti && ti.naturalWidth) { ctx.drawImage(ti, L * .02, top + 6, L * .96, L * .96 * ti.naturalHeight / ti.naturalWidth); ctx.fillStyle = '#a9d4d0'; rr(L * .1, top + 6 + L * .07, L * .8, L * .44, 6); ctx.fill(); } }
+  if (rd) for (const it of rd.items) if (t >= it.cueT) { const x = slotX(it.x, L * .1, L * .8), y = top + 6 + L * .38, a = clamp((t - it.cueT) / .08, 0, 1); if (J.kind[it.k].trap) img('bill', x, y + 4, 34, {a}); else nigiri(it.k, x, y, it.k === 'ot' ? 30 : 22, {a}); }
+  if (cur) { const K = J.kind[cur.k]; text(K.lbl, L * .5, bot - H * .17, K.trap ? 22 : 20, K.trap ? '#e0533d' : INK, {stroke: 5, a: 1 - (t - cur.cueT) / .3}); }
+  // right: station
+  ctx.fillStyle = '#efe0c4'; ctx.fillRect(L, top, W - L, bot - top);
+  rr(L + 8, top + 14, W - L - 16, H * .17, 10); ctx.fillStyle = '#d2b07c'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
+  const by = top + 14 + H * .14, oy = top + 6 + L * .38;
+  let next = null;
+  if (rd) for (const it of rd.items) {
+    if (t < it.cueT) continue; const x = slotX(it.x, L + 8, W - L - 16), n = it.note, big = it.k === 'ot';
+    if (it.cut != null) { const d = t - it.cut; if (d < .3) { nigiri(it.k, x, by - spring(d) * 6, big ? 30 : 22); text(big ? 'ギュギュッ！' : 'キュッ', x, by - 38, big ? 18 : 15, INK, {stroke: 4, a: 1 - d / .3}); } continue; }
+    if (it.bonk != null) { if (t - it.bonk < .9) { img('bill', x, by, 40, {rot: .2}); text('伝票は握らない', x, by - 46, 13, '#e0533d', {stroke: 4}); } continue; }
+    if (it.missed != null) { if (t - it.missed < .6) text('…', x, by - 20, 22, INK, {stroke: 4}); continue; }
+    if (J.kind[it.k].trap) continue;
+    ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.ellipse(x, by - 10, big ? 18 : 13, 9, 0, 0, 7); ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([]);
+    if (!next && t >= rd.rb - .2) next = it;
+  }
+  if (next) { const x = slotX(next.x, L + 8, W - L - 16); ctx.beginPath(); ctx.moveTo(x, by - 30); ctx.lineTo(x - 7, by - 42); ctx.lineTo(x + 7, by - 42); ctx.closePath(); ctx.fillStyle = '#f6c64a'; ctx.fill(); ctx.stroke(); }
+  { const ta = t - G.tapT, k = ta >= 0 && ta < .14 ? 's1' : ta >= .14 && ta < .4 && G.chop && G.chop.item ? 's2' : G.praise && t - G.praise.t < 1.2 ? 's3' : nearMiss() ? 's4' : 's0'; img(k, L + (W - L) * .5, bot - 2, H * .19 * (k === 's2' ? 1 : .95), {sy: 1 - .02 * bob(t)}); }
+  // dim the inactive side
+  ctx.fillStyle = `rgba(30,25,20,${.4 * G.act})`; ctx.fillRect(0, top, L, bot - top);
+  ctx.fillStyle = `rgba(30,25,20,${.4 * (1 - G.act)})`; ctx.fillRect(L, top, W - L, bot - top);
+  fogOver(t, rd, L, top, W - L, bot - top);
+  ctx.fillStyle = INK; ctx.fillRect(L - 2, top, 4, bot - top);
+  // conveyor lane (plates flow right -> left to the customers)
+  const ly = bot + H * .05; ctx.fillStyle = '#8a8f98'; ctx.fillRect(0, bot, W, H * .1); ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 2;
+  for (let x = -((t * 80) % 30); x < W; x += 30) { ctx.beginPath(); ctx.moveTo(W - x, bot + 4); ctx.lineTo(W - x - 10, bot + H * .1 - 4); ctx.stroke(); }
+  ctx.fillStyle = INK; ctx.fillRect(0, bot - 1.5, W, 3); ctx.fillRect(0, bot + H * .1 - 1.5, W, 3);
+  for (const n of G.notes) if (n.hitT != null && (n.res === 'great' || n.res === 'good')) { const d = t - n.hitT - .25; if (d < 0 || d > 3) continue; nigiri(n.item.k, W * .78 - d * 110, ly + 14, n.item.k === 'ot' ? 32 : 26, {plate: 1}); }
+  // floor + itacho
+  ctx.fillStyle = '#d9c7a8'; ctx.fillRect(0, bot + H * .1, W, H); img(G.praise && t - G.praise.t < 1.4 ? 'it1' : G.fin ? 'it2' : 'it0', W * .2, H, H * .2);
+  if (rd && t > rd.cb + 3 * SPB && t < rd.rb) text(J.next, W * .6, H * .8, 20, INK, {stroke: 5});
+  beatDots(t, top * .55 + 30);
+}
+
+function cover(k, x, y, w, h) { const i = IMG[k]; if (!i || !i.naturalWidth) return null; const s = Math.max(w / i.naturalWidth, h / i.naturalHeight), dw = i.naturalWidth * s, dh = i.naturalHeight * s, dx = x + (w - dw) / 2, dy = y + (h - dh) / 2; ctx.drawImage(i, dx, dy, dw, dh); return {dx, dy, dw, dh}; }
+// 2) お化け屋敷:画面切り替え(合図=廊下カメラの足音 → 回答=物陰から「ばあっ」)
+function obakeScene(t, rd) {
+  const resp = rd && t >= rd.rb - .12, gy = H * .74;
+  if (!resp) {
+    ctx.fillStyle = '#2a2433'; ctx.fillRect(0, 0, W, H);
+    // CCTV monitor
+    const mx = W * .08, my = H * .14, mw = W * .84, mh = H * .5;
+    rr(mx - 10, my - 10, mw + 20, mh + 20, 14); ctx.fillStyle = '#4a4552'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.stroke();
+    ctx.save(); rr(mx, my, mw, mh, 8); ctx.clip(); cover('obg1', mx, my, mw, mh);
+    let cur = null; if (rd) for (const it of rd.items) if (t >= it.cueT && t < it.cueT + .35) cur = it;
+    const prog = rd ? clamp((t - rd.cb) / BAR, 0, 1) : 0, k = cur ? (J.kind[cur.k].trap ? 'ocl' : cur.k === 'grp' ? 'og2' : 'og0') : 'og0';
+    img(k, mx + mw * (.5 + (prog - .5) * .25), my + mh * (.98 - .06 * Math.sin(prog * 3)), mh * (.38 + .3 * prog) * (cur ? 1 + .05 * spring(t - cur.cueT) : 1));
+    ctx.fillStyle = 'rgba(160,255,170,.06)'; for (let y = 0; y < mh; y += 4) ctx.fillRect(mx, my + y, mw, 1);
+    ctx.restore(); text('● REC 廊下', mx + 46, my + 16, 12, '#ff6b6b');
+    if (rd) for (const it of rd.items) if (t >= it.cueT) { const x = slotX(it.x, W * .05, W * .9), K = J.kind[it.k]; text(K.trap ? '🧹' : it.k === 'grp' ? '👣👣' : '👣', x, H * .72, K.trap ? 24 : 22, '#fff'); }
+    if (cur) { const K = J.kind[cur.k]; text(K.lbl, W * .5, H * .82, 28, K.trap ? '#f6c64a' : '#fff', {stroke: 6, sc: INK, a: 1 - (t - cur.cueT) / .35}); }
+    if (rd && t > rd.cb + 3 * SPB) text(J.next, W * .5, H * .9, 20, '#fff', {stroke: 5, sc: INK});
+    img('oboss', W * .86, H, H * .14, {a: .9});
+  } else {
+    ctx.fillStyle = '#100c16'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = '#1d1726'; ctx.fillRect(0, gy, W, H - gy);
+    img('obg2', W * .5, H * .99, H * .34);
+    let pop = null;
+    for (const it of rd.items) {
+      const x = slotX(it.x, W * .05, W * .9), n = it.note, K = J.kind[it.k];
+      if (it.cut != null) { const d = t - it.cut; img(it.k === 'grp' ? 'og2' : 'og1', x, gy - Math.min(d, .3) * 60, H * (it.k === 'grp' ? .16 : .13), {a: clamp(2 - d, 0, 1)}); if (d < .45) { pop = it; text(it.k === 'grp' ? 'ギャーーッ' : 'ギャッ', x, gy - H * .2, 18, '#fff', {stroke: 5, sc: INK}); } continue; }
+      if (it.bonk != null) { img('ocl', x, gy, H * .14); if (t - it.bonk < 1) text('…なにしてんの', x, gy - H * .17, 15, '#f6c64a', {stroke: 5, sc: INK}); continue; }
+      if (it.missed != null) { img('og0', x + (t - it.missed) * 80, gy, H * .12, {a: clamp(1 - (t - it.missed), 0, 1)}); continue; }
+      if (K.trap && n.res === 'pass') { img('ocl', x + (t - n.hitT) * 80, gy, H * .13, {a: clamp(1 - (t - n.hitT), 0, 1)}); continue; }
+      ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.beginPath(); ctx.ellipse(x, gy - 6, 22, 7, 0, 0, 7); ctx.fill(); text(K.trap ? '🧹' : '👣', x, gy + 22, 18, '#fff');
+    }
+    const ta = t - G.tapT, out = ta >= 0 && ta < .28, rc = G.react && t - G.react.t < .7 ? G.react.k : null;
+    if (out) { img('o1', pop ? slotX(pop.x, W * .05, W * .9) : W * .5, gy - H * .08, H * .22, {sx: 1 + .25 * spring(ta)}); text(pop ? 'ばあっ！' : 'ばあ…', W * .5, H * .22, 32, '#fff', {stroke: 7, sc: INK, a: 1 - ta / .28}); }
+    else img(rc ? 'o3' : G.praise && t - G.praise.t < 1.2 ? 'o2' : 'o0', W * .5, H * .84, H * .14);
+    const wp = clamp((t - rd.rb + .12) / .18, 0, 1); if (wp < 1) { ctx.fillStyle = '#000'; ctx.fillRect(W * wp, 0, W, H); }
+    fogOver(t, rd, 0, 0, W, gy);
+  }
+  beatDots(t, H * .07);
+}
+
+// 3) 引っ越し:上から落ちてくる(2拍で落下、手元に来たら受ける)
+function hikkoshiScene(t, rd) {
+  ctx.fillStyle = '#b9cdd6'; ctx.fillRect(0, 0, W, H);
+  const B = cover('hbg', 0, 0, W, H) || {dx: 0, dy: 0, dw: W, dh: H};
+  const wx = B.dx + B.dw * .5, wy = B.dy + B.dh * .4, hy = H * .8, catchY = hy - H * .2;
+  const throwN = G.notes.find(n => n.item.cueT <= t && t < n.item.cueT + .3);
+  img('hs0', wx + W * .02, wy + H * .08 + (throwN ? -spring(t - throwN.item.cueT) * 6 : 0), H * .14);
+  if (throwN) text(throwN.item.k === 'fr' ? 'ゴゴゴ…' : 'ほいっ', wx, wy - H * .07, 22, throwN.item.k === 'fr' ? '#e0533d' : INK, {stroke: 5, a: 1 - (t - throwN.item.cueT) / .3});
+  const tx = B.dx + B.dw * .8, ty = B.dy + B.dh * .86;
+  const caught = G.notes.filter(n => !n.trap && (n.res === 'great' || n.res === 'good') && t - n.hitT > .25).length;
+  for (let i = 0; i < Math.min(caught, 10); i++) img('hb', tx + (i % 2 ? 6 : -6), ty - i * H * .028, H * .04);
+  if (caught) text('×' + caught, tx, ty - Math.min(caught, 10) * H * .028 - 22, 14, INK, {stroke: 4});
+  const IK = {bx: 'hb', pl: 'hp', tv: 'htv', ch: 'hch', fr: 'hfr'};
+  for (const n of G.notes) {
+    const it = n.item, d = t - it.cueT; if (d < 0) continue; const q = d / (n.t - it.cueT), k = IK[it.k], s = H * (it.k === 'fr' ? .16 : .08);
+    if (n.res === 'great' || n.res === 'good') { const z = t - n.hitT; if (z < .25) { img(k, W * .5 + z * 500, catchY - Math.sin(z / .25 * Math.PI) * 50, s * .8); if (z < .2) text('ガシッ', W * .5, catchY - s - 10, 22, INK, {stroke: 5}); } continue; }
+    if (n.res === 'bonk') continue;
+    if (n.res === 'pass' || n.res === 'miss') { const z = t - n.hitT; if (z < .8) { img(k, W * (n.trap ? .22 : .5), H * .96, s, {rot: n.trap ? 0 : .5}); if (z < .4) text(n.trap ? 'ドスン（セーフ）' : 'ガシャ…', W * .5, H * .56, 18, n.trap ? INK : '#e0533d', {stroke: 5}); } continue; }
+    if (q > 1.2) continue;
+    img(k, wx + (W * .5 - wx) * q, lerp(wy + H * .04, catchY + s * .4, q * q), s * (.6 + .4 * q), {rot: q * (n.trap ? .3 : 2)});
+  }
+  ctx.setLineDash([6, 6]); ctx.strokeStyle = '#e0533d'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(W * .5, catchY, 36, 12, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+  const ta = t - G.tapT, rc = G.react && t - G.react.t < .8 ? G.react.k : null;
+  const pk = rc === 'bonk' ? 'h3' : ta >= 0 && ta < .22 ? 'h1' : G.praise && t - G.praise.t < 1.2 ? 'h2' : 'h0';
+  img(pk, W * .5, H * .98, H * (pk === 'h3' ? .17 : .22), {sy: 1 - .02 * bob(t)});
+  if (rc === 'bonk') text('ぐえっ', W * .5, H * .66, 24, '#e0533d', {stroke: 5});
+  beatDots(t, H * .05 + 30);
+}
+
+Object.assign(JOBS, {
+  sushi: {name: '回転寿司', boss: '板長', verb: '握る', trapName: 'お会計', trapHint: '「ポーン」(お会計)は握らない', next: 'つぎ、握るぞ', icon: 's3', scene: sushiScene,
+    kind: {mg: {h: .3, lbl: 'マグロ'}, sa: {h: .3, lbl: 'サーモン'}, tm: {h: .3, lbl: 'たまご'}, eb: {h: .3, lbl: 'えび'}, ot: {h: .4, lbl: '特上〜！', big: 1}, bill: {h: .3, lbl: 'お会計〜', trap: 1}},
+    normal: ['mg', 'sa', 'tm', 'eb'], traps: ['bill'], big: 'ot',
+    cue: (k, t, v) => k === 'bill' ? SND.pon(t) : k === 'ot' ? (SND.order(t, v), SND.don(t, v)) : SND.order(t, v + {mg: 0, sa: 2, tm: 4, eb: 5}[k]),
+    hit: (t, m, big) => (SND.nigiri(t, m), big && SND.don(t, m)), done: k => k, doneH: .3, word: ['キュッ', 'ギュギュッ'], bonkWord: '伝票は握らない',
+    actor: () => 'k0', fog: {col: '#ffffff', a: .88, msg: 'シャリの湯気！ 覚えたリズムで', name: '湯気'},
+    rank: ['it2', 'it0', 's4'], lines: {bonk: n => `伝票を${n}回握ったな。`, ok: 'お会計の音、ちゃんと聞き分けてた。', early: '握るのが少し早い。', late: '握るのが少し遅い。レーンが待ってるぞ。', fog: '湯気で迷ったな。', fin: '最後の特上、見事だ。'}},
+  obake: {name: 'お化け屋敷', boss: '主任', verb: 'おどかす', trapName: '清掃さん', trapHint: '足音どおりに「ばあっ」。ほうきの音はおどかさない', next: 'つぎ、おどかすぞ', icon: 'o2', scene: obakeScene,
+    kind: {g1: {h: .3, lbl: 'コツ'}, g2: {h: .3, lbl: 'コツ'}, grp: {h: .4, lbl: 'ドタドタ', big: 1}, cl: {h: .3, lbl: 'シャッシャッ', trap: 1}},
+    normal: ['g1', 'g2'], traps: ['cl'], big: 'grp',
+    cue: (k, t, v) => k === 'cl' ? SND.sweep(t) : k === 'grp' ? SND.dota(t) : SND.koto(t, v),
+    hit: (t, m, big) => SND.baa(t, big ? m - 5 : m), done: k => k, doneH: .3, word: ['ばあっ', 'ばばあっ'], bonkWord: '…なにしてんの',
+    actor: () => 'k0', fog: {col: '#000', a: .92, msg: '停電！ 覚えたリズムで', name: '停電'},
+    rank: ['o2', 'oboss', 'o3'], lines: {bonk: n => `清掃さんを${n}回おどかしたな。`, ok: '清掃さんには、ちゃんと会釈してた。', early: '出るのが少し早い。', late: '出るのが少し遅い。もう通り過ぎてる。', fog: '停電で迷ったな。', fin: '団体さま、全員泣いてた。'}},
+  hikkoshi: {name: '引っ越し', boss: '親方', verb: '受ける', trapName: '冷蔵庫', trapHint: '赤い輪に来たら受ける。「ゴゴゴ」は受けない', next: '', icon: 'h0', scene: hikkoshiScene, mech: 'drop',
+    kind: {bx: {e: '📦'}, pl: {e: '🪴'}, tv: {e: '📺'}, ch: {e: '🪑'}, fr: {e: '🧊', trap: 1}},
+    normal: ['bx', 'pl', 'tv', 'ch'], traps: ['fr'], big: 'bx',
+    cue: () => {}, hit: (t, m) => SND.catch(t, m), done: k => k, doneH: .3, word: ['ガシッ', 'ガシッ'], bonkWord: 'ぐえっ',
+    actor: () => 'k0', fog: {col: '#000', a: .5, msg: '', name: '夕暮れ'},
+    rank: ['h2', 'hs0', 'h3'], lines: {bonk: n => `冷蔵庫を${n}回受けたな。腰、大丈夫か。`, ok: '冷蔵庫はちゃんと見送った。正解だ。', early: '手を出すのが少し早い。', late: '受けるのが少し遅い。', fog: '', fin: ''}},
+});
+Object.assign(MR, {hikkoshi: ['Q1', 'Q2', 'Q1', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q5', 'Q8'], hikkoshiP: ['Q1', 'Q1', 'Q3', 'Q1', 'Q3', 'Q3']});
+// いったん厨房だけ公開(他の職種のコードは残してあるので、ACTIVE に足せば復活)
+const ACTIVE = ['kitchen'];
+for (const k of Object.keys(JOBS)) if (!ACTIVE.includes(k)) delete JOBS[k];
 let JOB = 'kitchen', J = JOBS.kitchen;
 function bossView(t, rd) {
   const {fy, ch, cx} = cLay(H), cur = rd ? rd.items.filter(it => t >= it.cueT && t < it.cueT + .3).pop() : null, pre = rd ? rd.items.find(it => t > it.cueT - SPB * .45 && t < it.cueT) : null;
@@ -271,13 +603,13 @@ const now = () => G ? AC.currentTime - G.t0 - lat() : 0;
 function start(phase) {
   initAudio();
   const D = DIFFS[DIFF]; BPM = D.bpm; SPB = 60 / BPM; BAR = 4 * SPB; MAIN = D.list; STEAM = D.steam; PRACT = D.pract;
-  const S = build(phase === 'practice' ? PRACT : MAIN, phase === 'practice');
+  const S = build(J.mech ? MR[JOB + (phase === 'practice' ? 'P' : '')] : phase === 'practice' ? PRACT : MAIN, phase === 'practice');
   G = Object.assign(S, {phase, t0: AC.currentTime + .25, ei: 0, over: false, tapT: -9, react: null, pStreak: 0, pTrap: 0, pEval: {}, pMsg: null, pClear: 0, sliced: 0, fin: 0, chop: null, stats: {great: 0, good: 0, miss: 0, bonk: 0, pass: 0, dts: []}});
   for (const rd of G.rounds) if (rd.r > 0 || phase === 'main') ev2(rd);
-  scene = 'play'; ['#title', '#result'].forEach(s => $(s).classList.remove('on'));
+  scene = 'play'; ['#title', '#result', '#detail'].forEach(s => $(s).classList.remove('on'));
   $('#hud').style.display = 'flex'; $('#hudL').textContent = phase === 'practice' ? '研修' : '本番 ' + J.name; $('#skip').style.display = phase === 'practice' ? 'block' : 'none';
 }
-function ev2(rd) { G.ev.push({t: rd.rb - .08, f: SND.wipe}); G.ev.sort((a, b) => a.t - b.t); }
+function ev2(rd) { if (['flow', 'quick', 'drop'].includes(J.mech)) return; G.ev.push({t: rd.rb - .08, f: SND.wipe}); G.ev.sort((a, b) => a.t - b.t); }
 setInterval(() => {
   if (!G || G.over) return;
   const la = AC.currentTime + .2 - G.t0;
@@ -285,7 +617,7 @@ setInterval(() => {
 }, 20);
 
 function judge(n, dt, t) {
-  n.res = Math.abs(dt) < .06 ? 'great' : 'good'; n.hitT = t; n.dt = dt; n.item.cut = t; G.chop = {t, item: n.item};
+  n.res = Math.abs(dt) < .06 ? 'great' : 'good'; n.hitT = t; n.dt = dt; if (!J.mech) n.item.cut = t; G.chop = {t, item: n.item};
   if (!n.demo) { G.stats[n.res]++; G.stats.dts.push(dt); G.sliced++; G.combo = (G.combo || 0) + 1; const PR = ['え、初日だよね？', 'できる…', '即戦力だ', '何者だ…？', '店長より速い', '時給、上げとくね']; if (G.combo % 8 === 0 && G.phase === 'main') G.praise = {t, s: PR[Math.min(PR.length - 1, G.combo / 8 - 1)]}; }
   J.hit(AC.currentTime, n.m, n.big);
   if (n.big && n === G.notes.filter(x => !x.trap).slice(-1)[0] && G.phase === 'main') { G.fin = t; SND.ok(AC.currentTime + .05); }
@@ -298,13 +630,16 @@ function tap() {
   if (best.trap) { best.res = 'bonk'; best.hitT = t; G.stats.bonk++; G.react = {k: 'bonk', t, item: best.item}; best.item.bonk = t; G.chop = {t, item: best.item}; SND.stuck(AC.currentTime); return; }
   judge(best, t - best.t, t);
 }
-addEventListener('pointerdown', e => { if (scene === 'play' && !(e.target.closest && e.target.closest('.btn'))) { e.preventDefault(); tap(); } }, {passive: false});
+addEventListener('pointerdown', e => { if (scene === 'play' && !(e.target.closest && e.target.closest('.btn'))) { e.preventDefault(); if (J.mech === 'hold') holdPress(e.clientX < innerWidth / 2 ? 'L' : 'R'); else tap(); } }, {passive: false});
+addEventListener('pointerup', () => { if (scene === 'play' && J.mech === 'hold') holdRelease(); });
+addEventListener('pointercancel', () => { if (scene === 'play' && J.mech === 'hold') holdRelease(); });
 addEventListener('keydown', e => { if (e.code === 'Space') tap(); });
 
 function update(t) {
   for (const n of G.notes) {
-    if (n.demo && !n.res && t >= n.t) { if (n.trap) { n.res = 'pass'; n.hitT = t; } else { judge(n, 0, t); G.tapT = t; } }
-    if (!n.res && t > n.t + .13) {
+    if (n.demo && !n.res && t >= n.t) { if (n.trap) { n.res = 'pass'; n.hitT = t; } else if (n.dur) { if (t >= n.t + n.dur) { judge(n, 0, t); n.item.stopT = t; } else continue; } else { judge(n, 0, t); G.tapT = t; } }
+    if (n.res === 'hold' && t > n.t + n.dur + .16) { G.holding = n; holdRelease(); n.item.crash = true; continue; }
+    if (!n.res && t > n.t + (n.dur && n.demo ? n.dur + 1 : .13)) {
       n.hitT = t;
       if (n.trap) { n.res = 'pass'; G.stats.pass++; }
       else { n.res = 'miss'; G.stats.miss++; G.react = {k: 'miss', t, item: n.item}; n.item.missed = t; SND.peta(AC.currentTime); }
@@ -317,7 +652,7 @@ function practiceCheck(t) {
   if (G.pClear) return;
   for (const rd of G.rounds) {
     if (rd.r === 0 || G.pEval[rd.r]) continue;
-    const ns = rd.items.map(x => x.note);
+    const ns = G.notes.filter(n => n.r === rd.r);
     if (!ns.every(n => n.res && t - n.hitT > .3)) break;
     G.pEval[rd.r] = 1; const ok = ns.every(n => n.res !== 'miss' && n.res !== 'bonk');
     G.pStreak = ok ? G.pStreak + 1 : 0; if (ok && ns.some(n => n.trap)) G.pTrap = 1; G.pMsg = {ok, t};
@@ -362,20 +697,36 @@ function finish() {
   <div style="display:flex;justify-content:space-between;font-size:11px;opacity:.6"><span>早い</span><span>遅い</span></div>`;
   $('#result').classList.add('on');
 }
-function renderDiffs() {
-  let god = false; try { god = localStorage.getItem('baito_god') === '1'; } catch (e) {}
-  const star = k => { let v = 0, sc = 0; try { v = +localStorage.getItem('baito_best_' + JOB + k) || 0; sc = +localStorage.getItem('baito_score_' + JOB + k) || 0; } catch (e) {} return ['', '△', '○', '★'][v] + (sc ? ' ' + sc + '点' : ''); };
-  $('#diffs').innerHTML = Object.entries(DIFFS).filter(([k]) => k !== 'god' || god).map(([k, d]) => `<button class="btn dbtn${k === 'god' ? ' god' : ''}" data-d="${k}"><span>${d.name}${k === 'god' ? ' <small>裏</small>' : ''}</span><small>${star(k)} BPM${d.bpm}</small></button>`).join('');
-  $('#jobs').innerHTML = Object.entries(JOBS).map(([k, j]) => `<button class="btn dbtn${k === JOB ? ' main' : ''}" data-j="${k}" style="justify-content:center">${j.name}</button>`).join('');
-  $('#jobs').querySelectorAll('button').forEach(b => b.onclick = () => { JOB = b.dataset.j; J = JOBS[JOB]; $('#tImg').src = 'img/' + J.icon + '.webp'; renderDiffs(); });
-  $('#diffs').querySelectorAll('button').forEach(b => b.onclick = () => { DIFF = b.dataset.d; start('practice'); });
+const LAYOUT = {kitchen: '上下', mogiri: '流れ作業', bowling: '即答', parking: '長押し', sushi: '左右', obake: '画面切替', hikkoshi: '落ちてくる'};
+const NEWJ = ['sushi', 'obake', 'hikkoshi'];
+const MULT = {easy: .8, normal: 1, hard: 1.3, oni: 1.6, god: 2.2};
+const wageOf = (sc, d) => Math.round((sc >= 50 ? 1000 + (sc - 50) * 30 : 1000 - (50 - sc) * 4) * MULT[d] / 10) * 10;
+const ls = k => { try { return +localStorage.getItem(k) || 0; } catch (e) { return 0; } };
+function bestWage(j) { let w = 0; for (const d in DIFFS) { const sc = ls('baito_score_' + j + d); if (sc) w = Math.max(w, wageOf(sc, d)); } return w; }
+function renderJobs() {
+  $('#jCount').textContent = Object.keys(JOBS).length + '件';
+  $('#jobs').innerHTML = Object.entries(JOBS).map(([k, j]) => { const bw = bestWage(k); return `<button class="jc" data-j="${k}"><img src="img/${j.icon}.webp" alt=""><div style="flex:1"><div class="nm">${j.name}</div><div class="wg">時給 ¥800〜¥3,500${bw ? ` ／ 自己ベスト ¥${bw.toLocaleString()}` : ''}</div><div class="ch">${NEWJ.includes(k) ? '<span class="chip new">NEW</span>' : ''}<span class="chip">${LAYOUT[k] || ''}</span><span class="chip">${j.boss}が待ってる</span></div></div><div style="font-size:22px;font-weight:900">›</div></button>`; }).join('');
+  $('#jobs').querySelectorAll('.jc').forEach(b => b.onclick = () => { JOB = b.dataset.j; J = JOBS[JOB]; openDetail(); });
 }
-renderDiffs();
+function openDetail() {
+  $('#title').classList.remove('on'); $('#detail').classList.add('on'); $('#detail').scrollTop = 0;
+  $('#tImg').src = 'img/' + J.icon + '.webp'; $('#dName').textContent = J.name;
+  $('#dMeta').textContent = `${LAYOUT[JOB] || ''}・上司:${J.boss}`;
+  $('#dDesc').innerHTML = `${J.boss}の合図に合わせて${J.verb}。<br>${J.trapHint}。`;
+  renderDiffs();
+}
+function renderDiffs() {
+  const god = ls('baito_god') === 1;
+  $('#diffs').innerHTML = Object.entries(DIFFS).filter(([k]) => k !== 'god' || god).map(([k, d]) => { const sc = ls('baito_score_' + JOB + k); return `<button class="btn dbtn${k === 'god' ? ' god' : k === 'normal' ? ' main' : ''}" data-d="${k}"><span>${d.name}${k === 'god' ? ' <small>裏</small>' : ''}</span><small>時給×${MULT[k]}${sc ? ` ・ ${sc}点` : ''}</small></button>`; }).join('');
+  $('#diffs').querySelectorAll('button').forEach(b => b.onclick = () => { DIFF = b.dataset.d; $('#detail').classList.remove('on'); start('practice'); });
+}
+renderJobs();
 let tTaps = [];
 $('#tImg').onclick = () => { const n = performance.now(); tTaps = tTaps.filter(x => n - x < 2500).concat(n); if (tTaps.length >= 5) { try { localStorage.setItem('baito_god', '1'); } catch (e) {} tTaps = []; renderDiffs(); $('#tImg').animate([{transform: 'rotate(0)'}, {transform: 'rotate(360deg)'}], 500); } };
 $('#skip').onclick = () => { if (G) { G.over = true; start('main'); } };
 $('#again').onclick = () => start('main');
-$('#toTitle').onclick = () => { scene = 'title'; G = null; $('#result').classList.remove('on'); $('#title').classList.add('on'); renderDiffs(); };
+$('#toTitle').onclick = () => { scene = 'title'; G = null; $('#result').classList.remove('on'); openDetail(); };
+$('#back').onclick = () => { $('#detail').classList.remove('on'); $('#title').classList.add('on'); renderJobs(); };
 
 // ---------- drawing ----------
 const beatPh = t => ((t / SPB) % 1 + 1) % 1, bob = t => Math.exp(-beatPh(t) * 6);
@@ -408,7 +759,7 @@ function flyDraw(t, rd, half) {
   for (const it of rd.items) {
     const d = t - it.cueT; if (d < 0 || d >= FLY) continue;
     const K = J.kind[it.k], ik = K.img || it.k, q = d / FLY, x0 = J.fly === 'drive' ? slotX(it.x, b.bl, b.bw) : c.cx + c.ch * .3, y0 = J.fly === 'drive' ? half + 20 : half + c.fy - c.ch * .75, x1 = slotX(it.x, b.bl, b.bw), y1 = b.base;
-    if (J.fly === 'drop') continue;
+    if (J.fly === 'drop' || J.mech === 'hold' || J.mech === 'count') continue;
     const h = lerp(c.ch * K.h * .42, b.sz * K.h * 1.25 * Math.min(1, 5.5 / rd.items.length), q);
     if (J.fly === 'drive') img(ik, x1, lerp(y0 + h, y1 + h * .1, q), h); else img(ik, lerp(x0, x1, q), lerp(y0, y1, q) - Math.sin(Math.PI * q) * half * .25, h, {rot: (1 - q) * 4});
   }
@@ -421,7 +772,8 @@ function boardView(t, rd) {
   let shake = 0; if (G.react && G.react.k === 'bonk' && t - G.react.t < .4) shake = Math.sin((t - G.react.t) * 70) * 6;
   ctx.save(); ctx.translate(shake, 0);
   let nextIt = null;
-  for (const it of rd ? rd.items : []) {
+  if (J.mech) { topMech(t, rd, {bw, bl, base, sz}); const nn = G.notes.find(n => !n.res && !n.trap && n.t > t); nextIt = nn ? {note: nn, x: nn.item.x, cueT: -9} : null; }
+  for (const it of rd && !J.mech ? rd.items : []) {
     if (t < it.cueT + (J.fly === 'drop' ? .05 : FLY)) continue;
     const K = J.kind[it.k], ik = K.img || it.k, x = slotX(it.x, bl, bw), h = sz * K.h * 1.25 * Math.min(1, 5.5 / rd.items.length), land = t - it.cueT - FLY;
     if (it.cut != null) { const d = t - it.cut, hop = Math.max(0, Math.sin(Math.PI * clamp(d / .25, 0, 1))) * 20; const dk = J.done(ik); if (JOB === 'parking') img(dk, x, base - h * .12 + 8 * spring(d), h, {sy: 1 - .06 * spring(d)}); else img(dk, x, base - hop, sz * J.doneH * (K.big ? 1.3 : 1) * Math.min(1, 5.5 / rd.items.length) ** .5); if (JOB === 'bowling' && d < .3) img('puff', x, base, sz * .3, {a: 1 - d / .3}); if (d < .3) text(J.word[K.big ? 1 : 0], x, base - h - 10 - d * 50, K.big ? 30 : 22, INK, {stroke: 6, a: 1 - d / .3}); continue; }
@@ -444,7 +796,7 @@ function boardView(t, rd) {
   ctx.fillStyle = '#dfe3e8'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
   rr(sz * .02, -sz * 1.25, sz * .12, sz * .42, 5); ctx.fillStyle = '#7a5235'; ctx.fill(); ctx.stroke(); ctx.restore();
   if (c && c.item && c.item.bonk === c.t) text('ガッ', kx, base - sz * .9, 28, INK, {stroke: 6});
-  } else if (tgt && t >= tgt.cueT + FLY) { const tx = slotX(tgt.x, bl, bw); ctx.beginPath(); ctx.moveTo(tx, bt + 8); ctx.lineTo(tx - 9, bt - 6); ctx.lineTo(tx + 9, bt - 6); ctx.closePath(); ctx.fillStyle = '#f6c64a'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.stroke(); }
+  } else if (tgt && t >= tgt.cueT + FLY && !J.mech) { const tx = slotX(tgt.x, bl, bw); ctx.beginPath(); ctx.moveTo(tx, bt + 8); ctx.lineTo(tx - 9, bt - 6); ctx.lineTo(tx + 9, bt - 6); ctx.closePath(); ctx.fillStyle = '#f6c64a'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.stroke(); }
   // little bit-kun in the corner
   const ta = t - G.tapT, rc = G.react && t - G.react.t < .7 ? G.react.k : null;
   const kk = J.actor({tap: ta >= 0 && ta < .4 ? ta : null, near: !!(nextIt && nextIt.note.t - t < SPB * .5), miss: rc === 'miss', bonk: rc === 'bonk', fin: !!G.fin});
@@ -460,9 +812,10 @@ function frame() {
   requestAnimationFrame(frame);
   if (scene !== 'play' || !G) return;
   const t = now(); update(t);
-  const rd = curRound(t), inResp = !!(rd && t >= rd.rb - .12 && t < rd.rb + BAR - .3);
+  const rd = curRound(t), live = ['flow', 'quick', 'drop'].includes(J.mech), inResp = live || !!(rd && t >= rd.rb - .12 && t < rd.rb + BAR - .3);
   const H0 = H, half = H0 / 2;
   G.act = (G.act == null ? 0 : G.act) + ((inResp ? 1 : 0) - (G.act || 0)) * .2;
+  if (J.scene) { J.scene(t, rd); hudDraw(t); return; }
   H = half; ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, half); ctx.clip(); boardView(t, rd);
   ctx.fillStyle = `rgba(30,25,20,${.35 * (1 - G.act)})`; ctx.fillRect(0, 0, W, half); ctx.restore();
   ctx.save(); ctx.translate(0, half); ctx.beginPath(); ctx.rect(0, 0, W, half); ctx.clip(); ctx.fillStyle = '#f7efe1'; ctx.fillRect(0, 0, W, H); bossView(t, rd);
@@ -478,7 +831,7 @@ function hudDraw(t) {
   if (G.phase === 'practice') {
     const r0 = G.rounds[0], r1 = G.rounds[1];
     if (t < r0.cb) text('拍に合わせて準備…', W / 2, H * .54, 18, INK, {stroke: 5});
-    else if (t < r1.cb) text(`お手本:聞いて、同じリズムで${J.verb}`, W / 2, H * .54, 18, INK, {stroke: 5});
+    else if (t < r1.cb) text(J.mech ? 'お手本:' + J.trapHint : `お手本:聞いて、同じリズムで${J.verb}`, W / 2, H * .54, 18, INK, {stroke: 5});
     else text(J.trapHint, W / 2, H * .54, 16, INK, {stroke: 5});
     for (let i = 0; i < 2; i++) { ctx.beginPath(); ctx.arc(W / 2 - 14 + i * 28, H * .58, 8, 0, 7); ctx.fillStyle = i < G.pStreak ? '#4fb3a9' : '#fff'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.stroke(); }
     if (G.pMsg && t - G.pMsg.t < .9 && !G.pClear) text(G.pMsg.ok ? 'いいね' : 'もう一回', W / 2, H * .63, 26, G.pMsg.ok ? '#4fb3a9' : '#e0533d', {stroke: 6, a: 1 - (t - G.pMsg.t) / .9});
