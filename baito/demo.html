@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>リズムでバイト(新ルール試作)</title>
+<style>
+html,body{margin:0;height:100%;background:#f4efe6;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;font-family:"Hiragino Maru Gothic ProN","M PLUS Rounded 1c","Rounded Mplus 1c",system-ui,sans-serif;color:#2b2724}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+.scr{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;background:#f4efe6}
+.scr.on{display:flex}
+h1{font-size:44px;margin:0;letter-spacing:.06em}
+.sub{opacity:.7;font-size:14px}
+.btn{font:inherit;font-size:18px;font-weight:700;padding:14px 30px;border-radius:999px;border:3px solid #2b2724;background:#fff;color:#2b2724;box-shadow:0 4px 0 #2b2724;cursor:pointer}
+.btn.main{background:#f6c64a}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #2b2724}
+#hud{position:fixed;top:calc(env(safe-area-inset-top) + 10px);left:12px;right:12px;display:none;justify-content:space-between;align-items:center;pointer-events:none;font-weight:700}
+#hud .btn{pointer-events:auto;font-size:14px;padding:8px 16px}
+.dbtn{display:flex;justify-content:space-between;align-items:center;font-size:17px;padding:11px 20px}.dbtn small{font-size:12px;opacity:.7}.dbtn.god{background:#2b2724;color:#f6c64a}
+.rank{font-size:40px;font-weight:900}
+.card{background:#fff;border:3px solid #2b2724;border-radius:16px;padding:12px 16px;width:min(320px,86vw);box-sizing:border-box;text-align:left;line-height:1.7}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="title" class="scr on">
+  <div class="sub">新ルール試作版:映画館・ボウリング・駐車場</div>
+  <h1>リズムで<br>バイト</h1>
+  <img src="img/k0.webp" alt="" id="tImg" style="height:150px">
+  <div class="sub">きょうのバイト</div><div id="jobs" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:min(300px,80vw)"></div>
+  <div id="diffs" style="display:flex;flex-direction:column;gap:10px;width:min(300px,80vw)"></div>
+  <div class="sub">音を出して遊んでね(マナーモードは解除)</div>
+</div>
+<div id="hud"><span id="hudL"></span><button class="btn" id="skip">スキップ ▶</button></div>
+<div id="result" class="scr" style="gap:10px;overflow-y:auto;justify-content:flex-start;padding-top:calc(env(safe-area-inset-top) + 24px)">
+  <div class="sub" id="rBoss">料理長のひょうか</div>
+  <div class="rank" id="rRank" style="font-size:34px"></div>
+  <img id="rImg" alt="" style="height:110px">
+  <div class="card" id="rCom"></div>
+  <div style="display:flex;gap:10px"><button class="btn" id="again">もういちど</button><button class="btn main" id="toTitle">おわる</button></div>
+</div>
+<script>
+'use strict';
+// ---------- canvas ----------
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+let W, H;
+function resize() { const d = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; cv.width = W * d; cv.height = H * d; ctx.setTransform(d, 0, 0, d, 0, 0); }
+addEventListener('resize', resize); resize();
+const $ = s => document.querySelector(s);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), lerp = (a, b, k) => a + (b - a) * k;
+const spring = a => a < 0 ? 0 : Math.exp(-8 * a) * Math.cos(26 * a);
+const INK = '#2b2724';
+
+// ---------- images ----------
+const IMG = {};
+['chef0', 'chef1', 'chef2', 'chef3', 'chef4', 'cuc', 'cucS', 'dai', 'daiS', 'car', 'carS', 'mel', 'melS', 'fish', 'fishS', 'duck', 'furn', 'k0', 'k1', 'k2', 'k3', 'k4', 'k5', 'k6', 'k7', 'board', 'm0','m1','m2','m3','m4','cuM','cuL','cuK','mgr','tk','tkS','pc','bc','dr','lobby','counter','p0','p1','p2','p3','p4','bw0','bw1','bw2','bmg','pinU','pinL','ball','shoe','puff','a0','a1','a2','a3','a4','gd0','gd1','drv0','drv1','car0','car1','car2','car3','bike','tow','bdeck','balley','plot','pgate']
+  .forEach(k => { const i = new Image(); i.src = 'img/' + k + '.webp'; IMG[k] = i; });
+function img(k, x, yb, h, o = {}) {
+  const i = IMG[k]; if (!i || !i.naturalWidth) return;
+  const w = h * i.naturalWidth / i.naturalHeight;
+  ctx.save(); ctx.translate(x, yb); if (o.rot) ctx.rotate(o.rot);
+  ctx.scale((o.sx || 1) * (o.flip ? -1 : 1), o.sy || 1); ctx.globalAlpha = o.a == null ? 1 : o.a;
+  ctx.drawImage(i, -w * (o.ax == null ? .5 : o.ax), -h, w, h); ctx.restore();
+}
+function text(s, x, y, size, col, o = {}) {
+  ctx.save(); ctx.globalAlpha = o.a == null ? 1 : clamp(o.a, 0, 1); ctx.font = `900 ${size}px "Hiragino Maru Gothic ProN","M PLUS Rounded 1c",system-ui,sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+  if (o.stroke) { ctx.lineWidth = o.stroke; ctx.strokeStyle = o.sc || '#fff'; ctx.strokeText(s, x, y); }
+  ctx.fillStyle = col; ctx.fillText(s, x, y); ctx.restore();
+}
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+
+// ---------- audio ----------
+let AC, master, NB;
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+function initAudio() {
+  if (AC) { AC.resume(); return; }
+  AC = new (window.AudioContext || window.webkitAudioContext)();
+  const comp = AC.createDynamicsCompressor(); master = AC.createGain(); master.gain.value = .85; master.connect(comp); comp.connect(AC.destination);
+  NB = AC.createBuffer(1, AC.sampleRate, AC.sampleRate); const d = NB.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const s = AC.createBufferSource(); s.buffer = AC.createBuffer(1, 1, 22050); s.connect(AC.destination); s.start(0);
+}
+function osc(type, f, t, dur, vol, o = {}) {
+  const s = AC.createOscillator(), g = AC.createGain(); s.type = type; s.frequency.setValueAtTime(f, t);
+  if (o.to) s.frequency.exponentialRampToValueAtTime(o.to, t + (o.toT || dur));
+  let n = s; if (o.lp) { const fl = AC.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = o.lp; s.connect(fl); n = fl; }
+  n.connect(g); g.connect(master); const a = o.a || .004;
+  g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + a); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  s.start(t); s.stop(t + dur + .05);
+}
+function noise(t, dur, vol, f, type = 'highpass', q = 1) {
+  const s = AC.createBufferSource(); s.buffer = NB; const fl = AC.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q;
+  const g = AC.createGain(); s.connect(fl); fl.connect(g); g.connect(master);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur); s.start(t, Math.random() * .5); s.stop(t + dur + .02);
+}
+const SND = {
+  kick: t => osc('sine', 150, t, .2, .9, {to: 42, toT: .12}),
+  snare: t => { noise(t, .13, .45, 1600); osc('triangle', 190, t, .08, .25); },
+  hat: (t, v = .12) => noise(t, .035, v, 7500),
+  bass: (t, m, d) => { osc('sawtooth', mtof(m), t, d, .3, {lp: 520}); osc('sine', mtof(m), t, d, .35); },
+  stab: (t, ms) => ms.forEach(m => osc('triangle', mtof(m), t, .14, .07, {lp: 2400})),
+  lead: (t, m, d) => { osc('square', mtof(m), t, d, .06, {lp: 1800, a: .01}); osc('triangle', mtof(m + 12), t, d * .7, .04); },
+  hoi: (t, m) => { osc('sawtooth', mtof(m), t, .13, .3, {to: mtof(m) * 1.32, toT: .08, lp: 1700}); osc('square', mtof(m - 12), t, .1, .08, {lp: 900}); noise(t, .03, .12, 3000); },
+  dokkoi: (t, m, spb) => { osc('sawtooth', mtof(m - 5), t, .12, .3, {lp: 1300}); osc('sawtooth', mtof(m - 5), t + spb * .5, .22, .32, {to: mtof(m - 9), lp: 1300}); },
+  pichi: (t, m) => { osc('sine', mtof(m + 12), t, .05, .35, {to: mtof(m + 5), toT: .04}); noise(t, .04, .2, 4000); },
+  nya: t => { osc('sawtooth', 760, t, .26, .2, {to: 480, toT: .22, lp: 2000}); osc('sine', 380, t, .24, .08, {to: 260}); },
+  pyui: t => { osc('square', 1300, t, .14, .1, {to: 1900, toT: .1, lp: 3000}); osc('sine', 2600, t + .02, .1, .08); },
+  fake: (t, m) => osc('sawtooth', mtof(m), t, .06, .22, {lp: 1200}),
+  chop: (t, m) => { osc('triangle', mtof(m), t, .09, .55); osc('sine', mtof(m) * 2.4, t, .04, .2); noise(t, .025, .35, 2500); },
+  chopBig: (t, m) => { SND.chop(t, m); osc('sine', 95, t, .3, .8, {to: 48}); noise(t, .22, .45, 900, 'lowpass'); },
+  swish: t => noise(t, .07, .12, 2500, 'bandpass', 2),
+  stuck: t => { osc('square', 1700, t, .06, .1, {lp: 4000}); noise(t, .05, .3, 3000); osc('triangle', 300, t, .08, .3); },
+  peta: t => { noise(t, .1, .4, 600, 'lowpass'); osc('sine', 180, t, .1, .3, {to: 90}); },
+  ok: t => [0, 4, 7, 12].forEach((d, i) => osc('triangle', mtof(72 + d), t + i * .06, .25, .12)),
+};
+
+// ---------- song & chart ----------
+let BPM = 120, SPB = 60 / BPM, BAR = 4 * SPB, DIFF = 'normal';
+const PROG = [[53, 57, 60], [50, 53, 57], [46, 50, 53], [48, 52, 55]];   // F Dm Bb C
+const KIND = {
+  cuc: {h: .62, lbl: 'ほいっ'}, car: {h: .58, lbl: 'ほいっ'}, dai: {h: .7, lbl: 'ほいっ'},
+  mel: {h: .62, lbl: 'どーん', big: 1}, fish: {h: .6, lbl: 'ピチッ'},
+duck: {h: .42, lbl: 'ピュイッ', trap: 1},
+};
+const NK = ['cuc', 'car', 'dai', 'fish'];
+const P = str => str.trim().split(/\s+/).map((tok, i) => { const [x, c] = tok.split(':'); return {x: +x, r: c || 'n', i}; });
+const ROUND = {
+  // かんたん
+  E1: P('0 2'), E2: P('0 1 2'), E3: P('0 1 2 3'), E4: P('0 2:d'), E5: P('0:m 2'), E6: P('0 1 3'), E7: P('0:d 1 2'), E8: P('0 1:d 2 3'),
+  // ふつう
+  R1: P('0 1 2'), R2: P('0 2'), R3: P('0 1:d 2'), R4: P('0 .5 1 2'), R5: P('0:m 2 3'), R6: P('0 1 1.5:d 2 3'), R7: P('0 .5 2 3:d'), R8: P('0 .5 1 1.5 2:m'), R9: P('0:d 1 2 3:d'), R10: P('0 1.5 2 3'), R11: P('.5 1 2 3'),
+  // むずかしい
+  H1: P('0 .5 1 2 2.5'), H2: P('0 .5 1.5 2 3'), H3: P('.5 1.5 2.5 3'), H4: P('0 1.5 2 2.5:d 3'), H5: P('0 1 1.5:d 2 2.5 3'), H6: P('0:m 2 2.5 3 3.5'), H7: P('0 .5 1 1.5 2 2.5:d 3'), H8: P('.5 1 1.5 2.5 3:m'), H9: P('0 1.5 3'), H10: P('0:d .5 1 1.5:d 2 3'),
+  // 鬼
+  O1: P('0 .25 .5 1 1.5 2'), O2: P('0 .5 .75 1 2 2.25 2.5'), O3: P('.25 .75 1.25 1.75 2.5 3'), O4: P('0 .5:d 1 1.5:d 2 2.5:d 3'), O5: P('0 .5 1 1.5 2 2.5 3 3.5'), O6: P('0 .75 1.5 2.25 3'), O7: P('0 .25:d .5 1 1.25 1.5:d 2:m'), O8: P('.5 .75 1 2 2.75 3 3.25'), O9: P('0:d .25 .5 .75 1:d 2 2.5 3:m'),
+};
+const KIND_ = KIND;
+const DIFFS = {
+  easy: {name: 'かんたん', bpm: 100, list: ['E1', 'E2', 'E1', 'E4', 'E3', 'E5', 'E6', 'E7', 'E2', 'E8', 'E3'], steam: [8, 9], pract: ['E1', 'E2', 'E4', 'E2', 'E4', 'E1', 'E4']},
+  normal: {name: 'ふつう', bpm: 120, list: ['R1', 'R2', 'R1', 'R3', 'R4', 'R10', 'R5', 'R11', 'R6', 'R7', 'R9', 'R4', 'R8'], steam: [8, 9, 10], pract: ['R1', 'R2', 'R3', 'R1', 'R3', 'R2', 'R3']},
+  hard: {name: 'むずかしい', bpm: 128, list: ['R4', 'H1', 'H9', 'H2', 'H4', 'H3', 'H6', 'H5', 'H8', 'H10', 'H7', 'H3', 'H6'], steam: [7, 8, 9, 10], pract: ['H1', 'H2', 'H4', 'H1', 'H4', 'H3', 'H4']},
+  oni: {name: '鬼', bpm: 136, list: ['H1', 'O6', 'O1', 'O4', 'O2', 'O3', 'O7', 'O5', 'O8', 'O9', 'O6', 'O4', 'O7'], steam: [6, 7, 8, 9, 10], pract: ['O1', 'O6', 'O4', 'O1', 'O4', 'O6', 'O4']},
+  god: {name: '神', bpm: 152, list: ['O6', 'O1', 'O9', 'O3', 'O7', 'O5', 'O2', 'O4', 'O8', 'O9', 'O5', 'O7', 'O9'], steam: 'all', pract: ['O1', 'O9', 'O6', 'O9', 'O4', 'O9']},
+};
+let MAIN = DIFFS.normal.list, STEAM = DIFFS.normal.steam, PRACT = DIFFS.normal.pract;
+const isSteam = r => STEAM === 'all' ? r > 0 : STEAM.includes(r);
+const INTRO = 2;
+
+// ---------- new mechanics (demo) ----------
+const MR = {
+  mogiri: ['M1', 'M2', 'M1', 'M3', 'M4', 'M5', 'M6', 'M3', 'M8', 'M7', 'M6'],
+  mogiriP: ['M1', 'M1', 'M3', 'M2', 'M3', 'M1', 'M3'],
+  bowling: ['B1', 'B2', 'B1', 'B3', 'B6', 'B4', 'B5', 'B7', 'B9', 'B8', 'B5'],
+  bowlingP: ['B1', 'B2', 'B3', 'B1', 'B3', 'B6', 'B3'],
+  parking: ['C1', 'C2', 'C1', 'C4', 'C3', 'C5', 'C6', 'C2', 'C7', 'C4', 'C5'],
+  parkingP: ['C1', 'C2', 'C4', 'C1', 'C4', 'C2', 'C4'],
+};
+const MRD = {
+  M1: P('0 2'), M2: P('0 1 2'), M3: P('0 2:d'), M4: P('0 1 3'), M5: P('0:d 1 2'), M6: P('0 1 2 3'), M7: P('1 2:d 3'), M8: P('0 1:d 2 3'),
+  B1: [[0, 1], [2, 2]], B2: [[0, 3]], B3: [[0, 2], [2, 'd']], B4: [[0, 1], [1, 1], [2, 3]], B5: [[0, 4]], B6: [[0, 2], [2, 2]], B7: [[0, 'd'], [1, 3]], B8: [[0, 3], [2, 'd'], [3, 1]], B9: [[0, 2], [1.5, 3]],
+  C1: [[0, 2, 'R']], C2: [[0, 1, 'L'], [2, 1, 'R']], C3: [[0, 3, 'L']], C4: [[0, 1, 'R'], [2, 'd']], C5: [[0, 1.5, 'L'], [2, 1, 'R']], C6: [[0, 'd'], [1, 2, 'R']], C7: [[0, 1, 'L'], [1.5, 1, 'R'], [3, .5, 'L']],
+};
+function buildMech(rd, ch, ev, notes, r) {
+  const cb = rd.cb, rb = rd.rb, spec = MRD[rd.name];
+  if (J.mech === 'two') spec.forEach((o, j) => {
+    const k = o.r === 'd' ? J.traps[(r + j) % J.traps.length] : 'tk', K = J.kind[k], voice = ch[2] + 12, it = {k, x: o.x, j, cueT: cb + o.x * SPB, round: rd, notes: []};
+    ev.push({t: it.cueT, f: t => J.cue(k, t, voice)});
+    if (!K.trap) ev.push({t: it.cueT + SPB / 2, f: t => SND.voice(t, voice + 5, 1.1)});
+    (K.trap ? [0] : [0, .5]).forEach((d, s) => { const n = {t: rb + (o.x + d) * SPB, item: it, trap: !!K.trap, r, step: s, m: ch[(j + s) % 3] + 24}; it.notes.push(n); notes.push(n); });
+    it.note = it.notes[0]; rd.items.push(it);
+  });
+  if (J.mech === 'count') spec.forEach(([x, c], j) => {
+    const trap = c === 'd', it = {k: trap ? 'shoe' : 'pin', x, j, n: trap ? 1 : c, up: 0, cueT: cb + x * SPB, round: rd, notes: []};
+    ev.push({t: it.cueT, f: trap ? SND.thud : t => SND.pins(t, c)});
+    for (let i = 0; i < it.n; i++) { const n = {t: rb + (x + i * .5) * SPB, item: it, trap, r, step: i, m: ch[i % 3] + 24}; it.notes.push(n); notes.push(n); }
+    it.note = it.notes[0]; rd.items.push(it);
+  });
+  if (J.mech === 'hold') spec.forEach(([x, d, side], j) => {
+    const trap = d === 'd', it = {k: trap ? 'bike' : 'car' + ((r + j) % 4), x, j, side: trap ? 'C' : side, cueT: cb + x * SPB, round: rd, notes: [], dur: trap ? 0 : d};
+    if (trap) ev.push({t: it.cueT, f: SND.bell});
+    else { ev.push({t: it.cueT, f: t => SND.whistle(t, side === 'R' ? 79 : 60, .14)}); for (let q = .5; q < d - .01; q += .5) ev.push({t: it.cueT + q * SPB, f: t => SND.voice(t, ch[0] + 12, 1.05)}); ev.push({t: it.cueT + d * SPB, f: t => (SND.whistle(t, 72, .06), SND.whistle(t + .09, 72, .06))}); }
+    const n = {t: rb + x * SPB, item: it, trap, r, step: 0, dur: trap ? 0 : d * SPB, side: it.side, m: ch[j % 3] + 24}; it.notes.push(n); notes.push(n); it.note = n; rd.items.push(it);
+  });
+}
+Object.assign(SND, {
+  pins: (t, c) => { SND.roll(t - .12); for (let i = 0; i < c; i++) { osc('triangle', 700 - i * 60, t + i * .09, .07, .35); noise(t + i * .09, .04, .3, 2200); } },
+});
+function holdPress(side) {
+  const t = now(); G.tapT = t;
+  let best = null; for (const n of G.notes) { if (n.res || n.demo) continue; const d = t - n.t; if (Math.abs(d) < .15 && (!best || Math.abs(d) < Math.abs(t - best.t))) best = n; }
+  if (!best) { SND.swish(AC.currentTime); return; }
+  if (best.trap) { best.res = 'bonk'; best.hitT = t; G.stats.bonk++; G.react = {k: 'bonk', t, item: best.item}; best.item.bonk = t; SND.stuck(AC.currentTime); return; }
+  if (best.side !== side) { best.res = 'miss'; best.hitT = t; G.stats.miss++; best.item.wrong = t; best.item.missed = t; G.react = {k: 'miss', t, item: best.item}; SND.peta(AC.currentTime); return; }
+  best.res = 'hold'; best.pdt = t - best.t; best.item.go = t; G.holding = best; osc('sawtooth', 110, AC.currentTime, best.dur + .2, .08, {lp: 400});
+}
+function holdRelease(auto) {
+  const n = G && G.holding; if (!n) return; G.holding = null;
+  const t = now(), dt = auto ? 0 : t - (n.t + n.dur), e = Math.max(Math.abs(dt), Math.abs(n.pdt || 0));
+  n.res = null; n.item.stopT = t;
+  if (e < .16) judge(n, dt, t); else { n.res = 'miss'; n.hitT = t; G.stats.miss++; n.item.missed = t; n.item.crash = dt > 0; G.react = {k: 'miss', t, item: n.item}; SND.peta(AC.currentTime); }
+}
+function topMech(t, rd, L) {
+  const {bw, bl, base, sz} = L;
+  if (!rd) return;
+  if (J.mech === 'two') for (const it of rd.items) {
+    if (t < it.cueT + FLY) continue; const K = J.kind[it.k], x = slotX(it.x, bl, bw), h = sz * K.h * 1.25, ik = K.img || it.k, [a, b] = it.notes;
+    if (it.bonk != null) { img(ik, x, base, h, {rot: .1}); if (t - it.bonk < 1) text(J.bonkWord, x, base - h - 14, 20, '#e0533d', {stroke: 5}); continue; }
+    if (K.trap) { if (a.res === 'pass') { const d = t - a.hitT; img(ik, x, base + d * 300, h, {a: clamp(1 - d * 2, 0, 1)}); } else img(ik, x, base, h); continue; }
+    if (b && b.res && b.res !== 'miss') { const d = t - b.hitT; img('tkS', x, base + d * 380, sz * .5, {a: clamp(1 - d * 2, 0, 1)}); if (d < .3) text('どうぞ', x, base - h - 8, 20, INK, {stroke: 5, a: 1 - d / .3}); continue; }
+    if (a.res && a.res !== 'miss') { const d = t - a.hitT; img('tkS', x, base, sz * .5, {sx: 1 + .1 * spring(d)}); if (d < .25) text('ビリッ', x, base - h - 8, 22, INK, {stroke: 5, a: 1 - d / .25}); if (b && b.res === 'miss') text('返して…', x, base - h - 8, 16, '#e0533d', {stroke: 4}); continue; }
+    img(ik, x, base, h, {rot: it.missed ? Math.sin((t - it.missed) * 20) * .05 : 0});
+  }
+  if (J.mech === 'count') for (const it of rd.items) {
+    if (t < it.cueT) continue; const x = W * (.22 + .56 * it.x / 3);
+    if (it.k === 'shoe') { const n = it.notes[0]; if (it.bonk != null) { img('p4', x, base, sz * .9); continue; } img('shoe', x + (n.res === 'pass' ? (t - n.hitT) * 200 : 0), base, sz * .32, {a: n.res === 'pass' ? clamp(1 - (t - n.hitT) * 2, 0, 1) : 1}); continue; }
+    for (let i = 0; i < it.n; i++) {
+      const n = it.notes[i], px = x + (i - (it.n - 1) / 2) * sz * .3, up = n.res && n.res !== 'miss';
+      if (up) { const d = t - n.hitT; img('pinU', px, base, sz * .85, {sy: 1 - .12 * spring(d)}); if (d < .25) img('puff', px, base, sz * .25, {a: 1 - d / .25}); }
+      else img('pinL', px, base - (i % 2) * 6, sz * .28, {rot: (i % 2 ? .3 : -.25)});
+    }
+    if (t - it.cueT < .5) text(`×${it.n}`, x, base - sz * .8, 24, '#e0533d', {stroke: 5, a: 1 - (t - it.cueT) / .5});
+  }
+  if (J.mech === 'hold') {
+    const lx = W * .3, rx = W * .7, sy = base - sz * .7;
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; [lx, rx].forEach(x => { ctx.strokeRect(x - sz * .32, sy - sz * .15, sz * .64, sz * .95); });
+    text('L', lx, sy + sz * .95, 18, '#fff', {stroke: 4, sc: INK}); text('R', rx, sy + sz * .95, 18, '#fff', {stroke: 4, sc: INK});
+    for (const it of rd.items) {
+      if (t < it.cueT) continue;
+      if (it.k === 'bike') { const n = it.notes[0], d = n.res ? t - n.hitT : 0; img('bike', W * .5, base + sz * .3 - d * 300, sz * .5, {a: n.res === 'pass' ? clamp(1 - d, 0, 1) : 1}); if (it.bonk != null && t - it.bonk < 1) text(J.bonkWord, W * .5, base - sz * .5, 20, '#e0533d', {stroke: 5}); continue; }
+      const n = it.notes[0], tx = it.side === 'R' ? rx : lx, h = sz * .62, startY = base + sz * .9;
+      let p = 0; if (it.go != null) p = clamp((Math.min(t, it.stopT || t) - it.go) / (n.dur || .3), 0, 1.4); if (n.demo && t >= n.t) p = clamp((t - n.t) / n.dur, 0, 1);
+      if (n.res === 'great' || n.res === 'good') p = 1;
+      const y = lerp(startY, sy + h * .85, Math.min(p, 1)) - (p > 1 ? (p - 1) * 40 : 0);
+      img(it.k, tx, y, h, {rot: it.wrong != null ? Math.sin((t - it.wrong) * 30) * .1 : 0});
+      if (it.crash && t - it.stopT < .8) text('ゴンッ', tx, sy - 10, 24, '#e0533d', {stroke: 5});
+      if (n.res === 'great' || n.res === 'good') { const d = t - n.hitT; if (d < .4) text('キッ', tx, sy - 10, 24, INK, {stroke: 5, a: 1 - d / .4}); }
+      if (it.wrong != null && t - it.wrong < .8) text('逆！', tx, y - h - 10, 24, '#e0533d', {stroke: 5});
+      if (!n.res && t > it.cueT && t < n.t + .2) text(it.side === 'R' ? '→ 右' : '左 ←', tx, startY - h - 6, 16, INK, {stroke: 4, a: .7});
+    }
+  }
+}
+
+function build(list, practice) {
+  const ev = [], rounds = [], notes = [];
+  const bars = INTRO + list.length * 2 + 1;
+  for (let b = 0; b < bars; b++) {
+    const t0 = b * BAR, ch = PROG[b % 4], last = b === bars - 1, resp = b >= INTRO && (b - INTRO) % 2 === 1;
+    if (last) { ev.push({t: t0, f: SND.kick}, {t: t0, f: t => SND.stab(t, ch.map(m => m + 12))}, {t: t0, f: t => SND.bass(t, ch[0] - 12, 1.2)}); break; }
+    for (let q = 0; q < 4; q++) ev.push({t: t0 + q * SPB, f: SND.kick});
+    for (let q = 0; q < 8; q++) ev.push({t: t0 + q * SPB / 2, f: t => SND.hat(t, q % 2 ? .1 : .05)});
+    if (!resp && b >= INTRO) [1, 3].forEach(q => ev.push({t: t0 + q * SPB, f: SND.clap}));
+    if (b === 1) for (let q = 0; q < 4; q++) ev.push({t: t0 + q * SPB, f: t => SND.count(t, q)});
+    [[0, 0, .4], [.75, 12, .2], [1.5, 7, .3], [2, 0, .4], [2.75, 12, .2], [3.5, 7, .3]].forEach(([q, o, d]) => ev.push({t: t0 + q * SPB, f: t => SND.bass(t, ch[0] - 24 + o, d)}));
+    if (!resp) [.5, 1.5, 2.5, 3.5].forEach(q => ev.push({t: t0 + q * SPB, f: t => SND.stab(t, ch.map(m => m + 12))}));
+    if (b === 0) [[0, 7], [.5, 9], [1, 12], [2, 9], [3, 7]].forEach(([q, d]) => ev.push({t: t0 + q * SPB, f: t => SND.lead(t, 60 + d, .2)}));
+  }
+  list.forEach((name, r) => {
+    const cb = (INTRO + r * 2) * BAR, rb = cb + BAR, ch = PROG[(INTRO + r * 2) % 4];
+    const rd = {name, r, cb, rb, items: []};
+    if (J.mech) { buildMech(rd, ch, ev, notes, r); rounds.push(rd); return; }
+    let ti = 0; ROUND[name].forEach((o0, j) => {
+      const o = {x: o0.x, k: o0.r === 'd' ? J.traps[(r + ti++) % J.traps.length] : o0.r === 'm' ? J.big : J.normal[(o0.i + r) % J.normal.length]};
+      const K = J.kind[o.k], cT = cb + o.x * SPB, voice = ch[2] + 12;
+      const item = {k: o.k, x: o.x, j, cueT: cT, round: rd};
+      ev.push({t: cT, f: t => J.cue(o.k, t, voice)});
+      const n = {t: rb + o.x * SPB, item, trap: !!K.trap, big: !!K.big, r, m: ch[j % 3] + 24};
+      item.note = n; notes.push(n); rd.items.push(item);
+    });
+    rounds.push(rd);
+  });
+  ev.sort((a, b) => a.t - b.t); notes.sort((a, b) => a.t - b.t);
+  if (practice) rounds[0].items.forEach(x => (x.notes || [x.note]).forEach(n => n.demo = 1));
+  return {ev, rounds, notes, end: bars * BAR};
+}
+Object.assign(SND, {
+  clap: t => { noise(t, .09, .35, 1200, 'bandpass', 1.2); noise(t + .012, .07, .25, 1500, 'bandpass', 1.2); },
+  count: (t, q) => { osc('square', q === 0 ? 1320 : 990, t, .05, .18, {lp: 4000}); },
+  hoi: (t, m) => { osc('sawtooth', mtof(m), t, .12, .3, {to: mtof(m) * 1.35, toT: .07, lp: 2000}); osc('square', mtof(m - 12), t, .1, .08, {lp: 1000}); noise(t, .03, .12, 3000); },
+  don: (t, m) => { osc('sawtooth', mtof(m - 12), t, .3, .35, {to: mtof(m - 17), lp: 1100}); osc('sine', 110, t, .3, .5, {to: 70}); },
+  pichi: (t, m) => { osc('sine', mtof(m + 12), t, .06, .35, {to: mtof(m + 5), toT: .05}); noise(t, .04, .2, 4000); },
+  nya: t => { const s = AC.createOscillator(), g = AC.createGain(), l = AC.createOscillator(), lg = AC.createGain(), f = AC.createBiquadFilter();
+    s.type = 'sawtooth'; s.frequency.setValueAtTime(330, t); s.frequency.linearRampToValueAtTime(520, t + .1); s.frequency.exponentialRampToValueAtTime(260, t + .42);
+    l.frequency.value = 9; lg.gain.value = 18; l.connect(lg); lg.connect(s.frequency); f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = 2;
+    s.connect(f); f.connect(g); g.connect(master); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.55, t + .04); g.gain.exponentialRampToValueAtTime(.0001, t + .45);
+    s.start(t); l.start(t); s.stop(t + .5); l.stop(t + .5); },
+  pyui: t => { osc('square', 1500, t, .16, .14, {to: 2600, toT: .12, lp: 3500}); osc('square', 1500, t + .18, .1, .1, {to: 2200, lp: 3500}); },
+  wipe: t => noise(t, .18, .18, 1800, 'bandpass', 1.5),
+});
+
+// ---------- jobs ----------
+Object.assign(SND, {
+  voice: (t, m, a = 1.35) => { osc('sawtooth', mtof(m), t, .12, .28, {to: mtof(m) * a, toT: .07, lp: 2000}); osc('square', mtof(m - 12), t, .1, .07, {lp: 1000}); },
+  buzz: t => { osc('square', 196, t, .07, .2, {lp: 900}); osc('square', 196, t + .1, .09, .2, {lp: 900}); },
+  rip: (t, m) => { noise(t, .09, .5, 2200, 'bandpass', 1.5); osc('triangle', mtof(m), t, .06, .3); },
+  crash: (t, n) => { for (let i = 0; i < n; i++) { osc('triangle', 520 + i * 90, t + i * .02, .08, .22); noise(t + i * .02, .05, .25, 1800); } },
+  roll: t => noise(t, .35, .15, 300, 'lowpass'),
+  thud: t => { osc('sine', 120, t, .14, .5, {to: 70}); noise(t, .06, .2, 500, 'lowpass'); },
+  clack: (t, m) => { osc('triangle', mtof(m), t, .07, .55); osc('sine', mtof(m) * 3, t, .03, .2); },
+  whistle: (t, m, d = .09) => { const s = AC.createOscillator(), g = AC.createGain(), l = AC.createOscillator(), lg = AC.createGain(); s.type = 'sine'; s.frequency.value = 2400 + (m % 12) * 30; l.frequency.value = 38; lg.gain.value = 120; l.connect(lg); lg.connect(s.frequency); s.connect(g); g.connect(master); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.25, t + .01); g.gain.setValueAtTime(.25, t + d - .02); g.gain.exponentialRampToValueAtTime(.0001, t + d); s.start(t); l.start(t); s.stop(t + d + .02); l.stop(t + d + .02); },
+  bell: t => { [0, .13].forEach(o => { osc('sine', 3150, t + o, .12, .18); osc('sine', 4700, t + o, .08, .08); }); },
+  squeal: (t, m) => { osc('sawtooth', mtof(m + 12), t, .08, .14, {to: mtof(m + 7), lp: 3000}); osc('sine', 90, t, .1, .4, {to: 60}); },
+});
+const JOBS = {
+  kitchen: {name: '厨房', boss: '料理長', verb: '切る', trapName: 'アヒル', trapHint: 'アヒルの「ピュイッ」は切らない', next: 'つぎ、切るぞ', icon: 'k0',
+    kind: KIND, normal: ['cuc', 'car', 'dai', 'fish'], traps: ['duck'], big: 'mel', fly: 'throw', knife: 1, top: 'board', topFill: '#cdb08a', stand: 1,
+    cue: (k, t, v) => k === 'duck' ? SND.pyui(t) : k === 'mel' ? SND.don(t, v) : k === 'fish' ? SND.pichi(t, v) : SND.hoi(t, v),
+    hit: (t, m, big) => (big ? SND.chopBig : SND.chop)(t, m), done: k => k + 'S', doneH: .34, word: ['トン', 'ザクッ！'], bonkWord: 'プピーッ',
+    actor: (s) => s.tap != null ? (s.tap < .06 ? 'k3' : s.tap < .16 ? 'k4' : s.tap < .28 ? 'k5' : 'k6') : s.near ? 'k1' : 'k0', actorAR: 235 / 320,
+    fog: {col: '#fbfaf7', a: .82, msg: '湯気で見えない！ 覚えたリズムで', name: '湯気'},
+    rank: ['chef4', 'chef0', 'k7'], lines: {bonk: n => `アヒルを${n}回切ろうとしたな。`, ok: 'アヒルは、ちゃんと聞こえていた。', early: '包丁が少し早い。リズムを待て。', late: '包丁が少し遅い。迷うな。', fog: '湯気で迷ったな。耳で覚えろ。', fin: '最後のスイカ、悪くなかった。'}},
+  mogiri: {name: '映画館', boss: '支配人', verb: 'もぎる', trapName: 'チケット以外', trapHint: 'もぎって、半拍あとに「どうぞ」で返す', next: 'つぎ、もぎるぞ', icon: 'm0',
+    kind: {tk: {h: .5, lbl: 'どうぞ'}, tkG: {h: .66, img: 'tk', lbl: '団体で', big: 1}, pc: {h: .55, lbl: 'これ？', trap: 1}, bc: {h: .5, lbl: 'これ？', trap: 1}, dr: {h: .8, lbl: 'これ？', trap: 1}},
+    normal: ['tk'], traps: ['pc', 'bc', 'dr'], big: 'tkG', fly: 'throw', top: 'counter', topFill: '#e9dcc7', mech: 'two',
+    cue: (k, t, v) => J.kind[k].trap ? SND.buzz(t) : k === 'tkG' ? (SND.voice(t, v - 5, 1.1), SND.voice(t + SPB / 2, v - 5, 1.1)) : SND.voice(t, v),
+    hit: (t, m) => SND.rip(t, m), done: () => 'tkS', doneH: .5, word: ['ビリッ', 'ビリリッ！'], bonkWord: '…もぎっちゃった',
+    actor: (s) => s.bonk ? 'm3' : s.tap != null ? (s.tap < .22 ? 'm2' : 'm0') : s.near ? 'm1' : s.fin ? 'm4' : 'm0',
+    fog: {col: '#1a1626', a: .9, msg: '上映中で暗い！ 覚えたリズムで', name: '暗がり'},
+    rank: ['m4', 'mgr', 'm3'], lines: {bonk: n => `チケット以外を${n}回もぎったな。`, ok: '診察券も名刺も、ちゃんと見分けていた。', early: 'もぎるのが少し早い。', late: 'もぎるのが少し遅い。お客様が待っている。', fog: '暗がりで迷ったな。', fin: '最後の団体さま、見事だった。'}},
+  bowling: {name: 'ボウリング場', boss: '店長', verb: '立てる', trapName: '靴', trapHint: '倒れた音の数だけ、トントンと立てる', next: 'つぎ、立てるぞ', icon: 'p0',
+    kind: {pin: {h: .2, lbl: 'カコーン'}, pinB: {h: .26, img: 'pinL', lbl: 'ガッシャーン', big: 1}, shoe: {h: .26, lbl: 'ポテッ', trap: 1}},
+    normal: ['pin'], traps: ['shoe'], big: 'pinB', fly: 'drop', top: 'bdeck', topFill: '#3a3446', base: .86, mech: 'count',
+    cue: (k, t) => k === 'shoe' ? SND.thud(t) : k === 'pinB' ? (SND.roll(t), SND.crash(t + .1, 6)) : (SND.roll(t), SND.crash(t + .05, 1)),
+    hit: (t, m) => SND.clack(t, m), done: () => 'pinU', doneH: .62, word: ['コトッ', 'スタッ！'], bonkWord: 'くさっ…',
+    actor: (s) => s.miss ? 'p3' : s.bonk ? 'p4' : s.tap != null ? (s.tap < .25 ? 'p2' : 'p0') : s.near ? 'p1' : 'p0',
+    fog: {col: '#241b33', a: .88, msg: 'ミラーボールタイム！ 覚えたリズムで', name: 'ミラーボール', disco: 1},
+    rank: ['bmg', 'p0', 'p3'], lines: {bonk: n => `靴を${n}回立てようとしたな。`, ok: '靴には手を出さなかった。えらい。', early: '立てるのが少し早い。', late: '立てるのが少し遅い。次のボールが来るぞ。', fog: 'ミラーボールで迷ったな。', fin: '最後のストライク後、完璧だった。'}},
+  parking: {name: '駐車場', boss: '先輩', verb: '止める', trapName: '自転車', trapHint: '高い笛は右、低い笛は左。押して、ピピッで離す', next: 'つぎ、止めるぞ', icon: 'a0',
+    kind: {car0: {h: .62, lbl: 'ピッ'}, car1: {h: .62, lbl: 'ピッ'}, car2: {h: .62, lbl: 'ピッ'}, car3: {h: .62, lbl: 'ピッ'}, tow: {h: .74, lbl: 'ピー', big: 1}, bike: {h: .55, lbl: 'チリン', trap: 1}},
+    normal: ['car0', 'car1', 'car2', 'car3'], traps: ['bike'], big: 'tow', fly: 'drive', top: 'plot', topFill: '#a9a3a6', base: .78, stand: 1, mech: 'hold',
+    cue: (k, t, v) => k === 'bike' ? SND.bell(t) : k === 'tow' ? SND.whistle(t, v, .5) : SND.whistle(t, v),
+    hit: (t, m) => SND.squeal(t, m), done: k => k, doneH: 0, word: ['キッ', 'キキーッ！'], bonkWord: 'え、ぼく？',
+    actor: (s) => s.miss ? 'a3' : s.bonk ? 'a4' : s.tap != null ? (s.tap < .25 ? 'a2' : 'a0') : s.near ? 'a1' : 'a0',
+    fog: {col: '#141a2b', a: .9, msg: '夜になった！ 覚えたリズムで', name: '夜'},
+    rank: ['gd1', 'gd0', 'a3'], lines: {bonk: n => `自転車を${n}回止めたな。`, ok: '自転車は、ちゃんと通してあげた。', early: '止めるのが少し早い。', late: '止めるのが少し遅い。ぶつかるぞ。', fog: '夜で迷ったな。', fin: 'レッカー車、きれいに止めた。'}},
+};
+let JOB = 'kitchen', J = JOBS.kitchen;
+function bossView(t, rd) {
+  const {fy, ch, cx} = cLay(H), cur = rd ? rd.items.filter(it => t >= it.cueT && t < it.cueT + .3).pop() : null, pre = rd ? rd.items.find(it => t > it.cueT - SPB * .45 && t < it.cueT) : null;
+  if (JOB === 'kitchen') return chefView(t, rd);
+  if (JOB === 'mogiri') {
+    img('lobby', W * .62, fy + 10, ch * 1.05, {a: .9});
+    ctx.fillStyle = '#d8cbb7'; ctx.fillRect(0, fy, W, H - fy); ctx.fillStyle = INK; ctx.fillRect(0, fy - 1.5, W, 3);
+    img('mgr', W * .88, fy + 2, ch * .9, {flip: true, sy: 1 - .02 * bob(t)});
+    const Q = ['cuM', 'cuL', 'cuK'], ci = cur ? cur.j % 3 : pre ? pre.j % 3 : -1;
+    Q.forEach((k, i) => { const on = i === ci, x = W * (.12 + i * .2), j = on && cur ? Math.max(0, spring(t - cur.cueT)) : 0; img(k, x + (on ? 10 : 0), fy + 2 - j * 10, ch * (k === 'cuM' ? 1.05 : .8), {sy: 1 - .02 * bob(t + i * .1), a: on || ci < 0 ? 1 : .7}); });
+  } else if (JOB === 'bowling') {
+    const bi = IMG.balley; if (bi && bi.naturalWidth) { const w = Math.max(W, H * bi.naturalWidth / bi.naturalHeight); ctx.drawImage(bi, (W - w) / 2, 0, w, w * bi.naturalHeight / bi.naturalWidth); }
+    const k = cur ? 'bw2' : pre ? 'bw1' : 'bw0'; img(k, cx + 10, fy + 6, ch * (k === 'bw2' ? .85 : 1));
+    if (cur && !J.kind[cur.k].trap) { const d = t - cur.cueT; img('ball', cx + ch * .6 + d * W * 2.5, fy - 4, ch * .22, {rot: d * 20}); }
+    if (cur && J.kind[cur.k].trap) { const d = t - cur.cueT; img('shoe', cx + ch * .7 + d * W * 1.5, fy - 4 - Math.abs(Math.sin(d * 14)) * 30, ch * .2, {rot: d * 8}); }
+    img('bmg', W * .9, fy + 6, ch * .7, {flip: true});
+  } else if (JOB === 'parking') {
+    const bi = IMG.pgate; if (bi && bi.naturalWidth) { const w = Math.max(W, H * bi.naturalWidth / bi.naturalHeight); ctx.drawImage(bi, (W - w) / 2, H - w * bi.naturalHeight / bi.naturalWidth, w, w * bi.naturalHeight / bi.naturalWidth); }
+    img(cur && !J.kind[cur.k].trap ? 'gd1' : 'gd0', cx, fy + 4, ch, {sy: 1 - .02 * bob(t)});
+    if (G.fin) { const d = t - G.fin; img(d % 1.6 < .8 ? 'drv0' : 'drv1', W * .7, fy + 4, ch * .75); if (d < 2) text('…やっぱり乗り直す', W * .68, fy - ch * .9, 16, INK, {stroke: 5}); }
+  }
+  if (cur) { const K = J.kind[cur.k]; text(K.lbl, cx + ch * .15, fy - ch * 1.12, K.trap ? 26 : 24, K.trap ? '#e0533d' : INK, {stroke: 6, a: 1 - (t - cur.cueT) / .3}); }
+  if (rd && t > rd.cb + 3 * SPB) text(J.next, W * .68, H * .8, 20, INK, {stroke: 5, a: clamp((t - rd.cb - 3 * SPB) / .2, 0, 1)});
+}
+
+// ---------- game state ----------
+let G = null, scene = 'title';
+const lat = () => AC ? (AC.outputLatency || 0) + (AC.baseLatency || 0) : 0;
+const now = () => G ? AC.currentTime - G.t0 - lat() : 0;
+function start(phase) {
+  initAudio();
+  const D = DIFFS[DIFF]; BPM = D.bpm; SPB = 60 / BPM; BAR = 4 * SPB; MAIN = D.list; STEAM = D.steam; PRACT = D.pract;
+  const S = build(J.mech ? MR[JOB + (phase === 'practice' ? 'P' : '')] : phase === 'practice' ? PRACT : MAIN, phase === 'practice');
+  G = Object.assign(S, {phase, t0: AC.currentTime + .25, ei: 0, over: false, tapT: -9, react: null, pStreak: 0, pTrap: 0, pEval: {}, pMsg: null, pClear: 0, sliced: 0, fin: 0, chop: null, stats: {great: 0, good: 0, miss: 0, bonk: 0, pass: 0, dts: []}});
+  for (const rd of G.rounds) if (rd.r > 0 || phase === 'main') ev2(rd);
+  scene = 'play'; ['#title', '#result'].forEach(s => $(s).classList.remove('on'));
+  $('#hud').style.display = 'flex'; $('#hudL').textContent = phase === 'practice' ? 'れんしゅう' : 'ほんばん'; $('#skip').style.display = phase === 'practice' ? 'block' : 'none';
+}
+function ev2(rd) { G.ev.push({t: rd.rb - .08, f: SND.wipe}); G.ev.sort((a, b) => a.t - b.t); }
+setInterval(() => {
+  if (!G || G.over) return;
+  const la = AC.currentTime + .2 - G.t0;
+  while (G.ei < G.ev.length && G.ev[G.ei].t < la) { const e = G.ev[G.ei++]; e.f(Math.max(AC.currentTime, G.t0 + e.t)); }
+}, 20);
+
+function judge(n, dt, t) {
+  n.res = Math.abs(dt) < .06 ? 'great' : 'good'; n.hitT = t; n.dt = dt; if (!J.mech) n.item.cut = t; G.chop = {t, item: n.item};
+  if (!n.demo) { G.stats[n.res]++; G.stats.dts.push(dt); G.sliced++; }
+  J.hit(AC.currentTime, n.m, n.big);
+  if (n.big && n === G.notes.filter(x => !x.trap).slice(-1)[0] && G.phase === 'main') { G.fin = t; SND.ok(AC.currentTime + .05); }
+}
+function tap() {
+  if (!G || G.over) return;
+  const t = now(); G.tapT = t;
+  let best = null; for (const n of G.notes) { if (n.res || n.demo) continue; const d = t - n.t; if (Math.abs(d) < .13 && (!best || Math.abs(d) < Math.abs(t - best.t))) best = n; }
+  if (!best) { SND.swish(AC.currentTime); G.chop = {t, item: null}; return; }
+  if (best.trap) { best.res = 'bonk'; best.hitT = t; G.stats.bonk++; G.react = {k: 'bonk', t, item: best.item}; best.item.bonk = t; G.chop = {t, item: best.item}; SND.stuck(AC.currentTime); return; }
+  judge(best, t - best.t, t);
+}
+addEventListener('pointerdown', e => { if (scene === 'play' && !(e.target.closest && e.target.closest('.btn'))) { e.preventDefault(); if (J.mech === 'hold') holdPress(e.clientX < innerWidth / 2 ? 'L' : 'R'); else tap(); } }, {passive: false});
+addEventListener('pointerup', () => { if (scene === 'play' && J.mech === 'hold') holdRelease(); });
+addEventListener('pointercancel', () => { if (scene === 'play' && J.mech === 'hold') holdRelease(); });
+addEventListener('keydown', e => { if (e.code === 'Space') tap(); });
+
+function update(t) {
+  for (const n of G.notes) {
+    if (n.demo && !n.res && t >= n.t) { if (n.trap) { n.res = 'pass'; n.hitT = t; } else if (n.dur) { if (t >= n.t + n.dur) { judge(n, 0, t); n.item.stopT = t; } else continue; } else { judge(n, 0, t); G.tapT = t; } }
+    if (n.res === 'hold' && t > n.t + n.dur + .16) { G.holding = n; holdRelease(); n.item.crash = true; continue; }
+    if (!n.res && t > n.t + (n.dur && n.demo ? n.dur + 1 : .13)) {
+      n.hitT = t;
+      if (n.trap) { n.res = 'pass'; G.stats.pass++; }
+      else { n.res = 'miss'; G.stats.miss++; G.react = {k: 'miss', t, item: n.item}; n.item.missed = t; SND.peta(AC.currentTime); }
+    }
+  }
+  if (G.phase === 'practice') practiceCheck(t);
+  if (t > G.end + .3 && !G.over) finish();
+}
+function practiceCheck(t) {
+  if (G.pClear) return;
+  for (const rd of G.rounds) {
+    if (rd.r === 0 || G.pEval[rd.r]) continue;
+    const ns = G.notes.filter(n => n.r === rd.r);
+    if (!ns.every(n => n.res && t - n.hitT > .3)) break;
+    G.pEval[rd.r] = 1; const ok = ns.every(n => n.res !== 'miss' && n.res !== 'bonk');
+    G.pStreak = ok ? G.pStreak + 1 : 0; if (ok && ns.some(n => n.trap)) G.pTrap = 1; G.pMsg = {ok, t};
+  }
+  if (G.pStreak >= 2 && G.pTrap) { G.pClear = t; SND.ok(AC.currentTime); const me = G; setTimeout(() => { if (G === me) { G.over = true; start('main'); } }, 1800); }
+}
+function finish() {
+  G.over = true;
+  if (G.phase === 'practice') { start('practice'); return; }
+  scene = 'result'; $('#hud').style.display = 'none';
+  const s = G.stats, ns = G.notes.filter(n => !n.demo), real = ns.filter(n => !n.trap), traps = ns.filter(n => n.trap);
+  const pts = n => n.trap ? (n.res === 'pass' ? 1 : 0) : n.res === 'great' ? 1 : n.res === 'good' ? .6 : 0;
+  const score = Math.round(100 * ns.reduce((a, n) => a + pts(n), 0) / Math.max(1, ns.length));
+  const rank = score >= 85 ? 'ハイレベル' : score >= 60 ? 'まあまあ' : 'もう一回';
+  const title = score === 100 ? '伝説のバイト' : score >= 95 ? '店長候補' : score >= 85 ? '頼れるバイト' : score >= 70 ? 'ふつうのバイト' : score >= 60 ? '見習い' : score >= 40 ? '皿洗い係' : '帰っていいよ';
+  let combo = 0, best = 0; for (const n of ns) { if (n.res === 'miss' || n.res === 'bonk') combo = 0; else best = Math.max(best, ++combo); }
+  const half = ns.length / 2, rate = a => a.length ? Math.round(100 * a.reduce((x, n) => x + pts(n), 0) / a.length) : null;
+  const first = rate(ns.slice(0, Math.floor(half))), second = rate(ns.slice(Math.floor(half))), steam = rate(ns.filter(n => isSteam(n.r)));
+  const avg = s.dts.length ? s.dts.reduce((a, b) => a + b, 0) / s.dts.length : 0, ms = Math.round(avg * 1000);
+  const RK = {'もう一回': 1, 'まあまあ': 2, 'ハイレベル': 3};
+  let isBest = false;
+  try { const k = 'baito_best_' + JOB + DIFF, old = +localStorage.getItem(k) || 0; if (RK[rank] > old) localStorage.setItem(k, RK[rank]); const ks = 'baito_score_' + JOB + DIFF, os = +localStorage.getItem(ks) || 0; if (score > os) { localStorage.setItem(ks, score); isBest = os > 0 || true; } } catch (e) {}
+  $('#rRank').innerHTML = `${rank}<div style="font-size:15px;font-weight:700;opacity:.75">${DIFFS[DIFF].name} ・ ${score}点 ・「${title}」${isBest ? ' <span style="color:#e0533d">自己ベスト！</span>' : ''}</div>`;
+  $('#rImg').src = 'img/' + J.rank[rank === 'ハイレベル' ? 0 : rank === 'まあまあ' ? 1 : 2] + '.webp'; $('#rBoss').textContent = J.boss + 'のひょうか';
+  const L = [];
+  if (s.miss === 0 && s.bonk === 0) L.push('…ノーミス。合格だ。');
+  if (s.bonk) L.push(J.lines.bonk(s.bonk)); else if (traps.length) L.push(J.lines.ok);
+  if (ms < -25) L.push(J.lines.early); else if (ms > 25) L.push(J.lines.late);
+  if (steam != null && steam < 70) L.push(J.lines.fog);
+  if (first != null && second != null && second < first - 15) L.push('後半でバテたな。');
+  if (G.fin) L.push(J.lines.fin);
+  const row = (a, b) => `<tr><td style="padding:2px 10px 2px 0;opacity:.75">${a}</td><td style="text-align:right;font-weight:700">${b}</td></tr>`;
+  const bar = Math.max(-60, Math.min(60, ms));
+  $('#rCom').innerHTML = `<b>${J.boss}</b><br>${L.slice(0, 2).join('<br>') || 'まずまずだ。'}
+  <table style="width:100%;margin-top:10px;font-size:14px;border-collapse:collapse">
+  ${row('ジャスト', s.great)}${row('おしい', s.good)}${row('のがした', s.miss)}${row(J.trapName + ' がまん', `${s.pass} / ${traps.length}`)}${row(J.trapName + ' さわった', s.bonk)}
+  ${row('最大コンボ', best)}${row('前半 / 後半', `${first ?? '-'} / ${second ?? '-'}`)}${steam != null ? row(J.fog.name + 'の中', steam) : ''}
+  ${row('タイミング', ms === 0 ? 'ぴったり' : ms < 0 ? `${-ms}ms 早い` : `${ms}ms 遅い`)}
+  </table>
+  <div style="position:relative;height:14px;margin-top:6px;background:#efe6d8;border-radius:7px"><div style="position:absolute;left:50%;top:0;bottom:0;width:2px;background:#2b2724"></div><div style="position:absolute;top:2px;width:10px;height:10px;border-radius:50%;background:#e0533d;left:calc(${50 + bar * 50 / 60}% - 5px)"></div></div>
+  <div style="display:flex;justify-content:space-between;font-size:11px;opacity:.6"><span>早い</span><span>遅い</span></div>`;
+  $('#result').classList.add('on');
+}
+function renderDiffs() {
+  let god = false; try { god = localStorage.getItem('baito_god') === '1'; } catch (e) {}
+  const star = k => { let v = 0, sc = 0; try { v = +localStorage.getItem('baito_best_' + JOB + k) || 0; sc = +localStorage.getItem('baito_score_' + JOB + k) || 0; } catch (e) {} return ['', '△', '○', '★'][v] + (sc ? ' ' + sc + '点' : ''); };
+  $('#diffs').innerHTML = Object.entries(DIFFS).filter(([k]) => k !== 'god' || god).map(([k, d]) => `<button class="btn dbtn${k === 'god' ? ' god' : ''}" data-d="${k}"><span>${d.name}${k === 'god' ? ' <small>裏</small>' : ''}</span><small>${star(k)} BPM${d.bpm}</small></button>`).join('');
+  $('#jobs').innerHTML = Object.entries(JOBS).map(([k, j]) => `<button class="btn dbtn${k === JOB ? ' main' : ''}" data-j="${k}" style="justify-content:center">${j.name}</button>`).join('');
+  $('#jobs').querySelectorAll('button').forEach(b => b.onclick = () => { JOB = b.dataset.j; J = JOBS[JOB]; $('#tImg').src = 'img/' + J.icon + '.webp'; renderDiffs(); });
+  $('#diffs').querySelectorAll('button').forEach(b => b.onclick = () => { DIFF = b.dataset.d; start('practice'); });
+}
+renderDiffs();
+let tTaps = [];
+$('#tImg').onclick = () => { const n = performance.now(); tTaps = tTaps.filter(x => n - x < 2500).concat(n); if (tTaps.length >= 5) { try { localStorage.setItem('baito_god', '1'); } catch (e) {} tTaps = []; renderDiffs(); $('#tImg').animate([{transform: 'rotate(0)'}, {transform: 'rotate(360deg)'}], 500); } };
+$('#skip').onclick = () => { if (G) { G.over = true; start('main'); } };
+$('#again').onclick = () => start('main');
+$('#toTitle').onclick = () => { scene = 'title'; G = null; $('#result').classList.remove('on'); $('#title').classList.add('on'); renderDiffs(); };
+
+// ---------- drawing ----------
+const beatPh = t => ((t / SPB) % 1 + 1) % 1, bob = t => Math.exp(-beatPh(t) * 6);
+function curRound(t) { for (const rd of G.rounds) if (t >= rd.cb - .25 && t < rd.rb + BAR - .25) return rd; return null; }
+function slotX(x, l0, w) { return l0 + w * (.1 + .8 * x / 3.5); }
+function beatDots(t, y) {
+  const b = Math.floor(t / SPB), inBar = ((b % 4) + 4) % 4;
+  for (let i = 0; i < 4; i++) { const on = i === inBar && t >= 0; ctx.beginPath(); ctx.arc(W / 2 - 45 + i * 30, y, on ? 9 + 4 * bob(t) : 7, 0, 7); ctx.fillStyle = on ? '#f6c64a' : 'rgba(255,255,255,.85)'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.stroke(); }
+}
+function chefView(t, rd) {
+  const {fy, ch, cx} = cLay(H);
+  ctx.fillStyle = '#f7efe1'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#efe3cf'; for (let y = H * .08; y < fy; y += 44) for (let x = (y / 44 % 2) * 22; x < W; x += 44) { rr(x + 3, y + 3, 38, 38, 6); ctx.fill(); }
+  img('furn', W * .5, fy - ch * .02, ch * .45, {a: .8});
+  ctx.fillStyle = '#d9c7a8'; ctx.fillRect(0, fy, W, H - fy); ctx.fillStyle = INK; ctx.fillRect(0, fy - 1.5, W, 3);
+  let k = 'chef0', lbl = null;
+  if (rd) {
+    const pre = rd.items.find(it => t > it.cueT - SPB * .45 && t < it.cueT), last = rd.items.filter(it => t >= it.cueT && t < it.cueT + .3).pop();
+    if (last) { k = J.kind[last.k].trap ? 'chef3' : 'chef2'; lbl = last; } else if (pre) k = 'chef1';
+  }
+  img(k, cx, fy + 4, ch * 1.15, {sy: 1 - .025 * bob(t)});
+  if (lbl) { const K = J.kind[lbl.k]; text(K.lbl, cx + ch * .15, fy - ch * 1.32, K.trap ? 26 : 24, K.trap ? '#e0533d' : INK, {stroke: 6, a: 1 - (t - lbl.cueT) / .3}); }
+  if (rd && t > rd.cb + 3 * SPB) text('つぎ、切るぞ', W * .68, H * .8, 20, INK, {stroke: 5, a: clamp((t - rd.cb - 3 * SPB) / .2, 0, 1)});
+  }
+const FLY = .28;
+function bLay(h) { const bi = IMG[J.top], ar = bi && bi.naturalWidth ? bi.naturalWidth / bi.naturalHeight : 1.4, bw = Math.min(W * .96, h * 1.25 * ar), bh = bw / ar, bl = (W - bw) / 2, bt = h * .5 - bh / 2; return {bw, bh, bl, bt, base: bt + bh * (J.base || .62), sz: bh * .5}; }
+function cLay(h) { return {fy: h * .9, ch: Math.min(h * .62, W * .5), cx: W * .2}; }
+function flyDraw(t, rd, half) {
+  if (!rd) return; const b = bLay(half), c = cLay(half);
+  for (const it of rd.items) {
+    const d = t - it.cueT; if (d < 0 || d >= FLY) continue;
+    const K = J.kind[it.k], ik = K.img || it.k, q = d / FLY, x0 = J.fly === 'drive' ? slotX(it.x, b.bl, b.bw) : c.cx + c.ch * .3, y0 = J.fly === 'drive' ? half + 20 : half + c.fy - c.ch * .75, x1 = slotX(it.x, b.bl, b.bw), y1 = b.base;
+    if (J.fly === 'drop' || J.mech === 'hold' || J.mech === 'count') continue;
+    const h = lerp(c.ch * K.h * .42, b.sz * K.h * 1.25 * Math.min(1, 5.5 / rd.items.length), q);
+    if (J.fly === 'drive') img(ik, x1, lerp(y0 + h, y1 + h * .1, q), h); else img(ik, lerp(x0, x1, q), lerp(y0, y1, q) - Math.sin(Math.PI * q) * half * .25, h, {rot: (1 - q) * 4});
+  }
+}
+function boardView(t, rd) {
+  ctx.fillStyle = J.topFill; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(43,39,36,.12)'; ctx.lineWidth = 2; for (let y = 0; y < H; y += 36) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y + 8); ctx.stroke(); }
+  const {bw, bh, bl, bt, base, sz} = bLay(H), bi = IMG[J.top];
+  if (bi && bi.naturalWidth) ctx.drawImage(bi, bl, bt, bw, bh);
+  let shake = 0; if (G.react && G.react.k === 'bonk' && t - G.react.t < .4) shake = Math.sin((t - G.react.t) * 70) * 6;
+  ctx.save(); ctx.translate(shake, 0);
+  let nextIt = null;
+  if (J.mech) { topMech(t, rd, {bw, bl, base, sz}); const nn = G.notes.find(n => !n.res && !n.trap && n.t > t); nextIt = nn ? {note: nn, x: nn.item.x, cueT: -9} : null; }
+  for (const it of rd && !J.mech ? rd.items : []) {
+    if (t < it.cueT + (J.fly === 'drop' ? .05 : FLY)) continue;
+    const K = J.kind[it.k], ik = K.img || it.k, x = slotX(it.x, bl, bw), h = sz * K.h * 1.25 * Math.min(1, 5.5 / rd.items.length), land = t - it.cueT - FLY;
+    if (it.cut != null) { const d = t - it.cut, hop = Math.max(0, Math.sin(Math.PI * clamp(d / .25, 0, 1))) * 20; const dk = J.done(ik); if (JOB === 'parking') img(dk, x, base - h * .12 + 8 * spring(d), h, {sy: 1 - .06 * spring(d)}); else img(dk, x, base - hop, sz * J.doneH * (K.big ? 1.3 : 1) * Math.min(1, 5.5 / rd.items.length) ** .5); if (JOB === 'bowling' && d < .3) img('puff', x, base, sz * .3, {a: 1 - d / .3}); if (d < .3) text(J.word[K.big ? 1 : 0], x, base - h - 10 - d * 50, K.big ? 30 : 22, INK, {stroke: 6, a: 1 - d / .3}); continue; }
+    if (it.bonk != null) { const d = t - it.bonk; img(ik, x, base, h, {sx: 1 + .15 * spring(d), sy: 1 - .2 * spring(d)}); if (d < 1) text(J.bonkWord, x, base - h - 16, 24, '#e0533d', {stroke: 6, a: 1 - d}); continue; }
+    if (it.missed != null) { img(ik, x, base, h, {rot: Math.sin((t - it.missed) * 20) * .05}); if (t - it.missed < .6) text('…', x, base - h - 10, 26, INK, {stroke: 5}); continue; }
+    if (K.trap && it.note.res === 'pass') { const d = t - it.note.hitT; if (JOB === 'parking') img(ik, x, base - d * H * 1.2, h, {a: clamp(1 - d, 0, 1)}); else img(ik, x + d * 120, base - Math.abs(Math.sin(d * 12)) * 20, h, {a: clamp(1 - d * 1.5, 0, 1)}); continue; }
+    if (JOB === 'parking') img(ik, x, base + h * .1 + Math.sin(t * 40) * 1.5, h); else img(ik, x, base, h, {sx: 1 + .18 * spring(land), sy: 1 - .2 * spring(land) - .03 * bob(t)});
+    if (JOB === 'bowling' && land < .2) img('puff', x, base, sz * .25, {a: 1 - land / .2});
+    if (land < .2 && JOB !== 'parking') text('ポン', x, base - h - 8, 18, INK, {stroke: 5, a: 1 - land / .2});
+    if (!nextIt && !K.trap) nextIt = it;
+  }
+  ctx.restore();
+  beatDots(t, H * .2);
+  // knife
+  const c = G.chop && t - G.chop.t < .12 ? G.chop : null, tgt = c && c.item ? c.item : nextIt;
+  if (J.knife) {
+  const kx = tgt ? slotX(tgt.x, bl, bw) : W * .5, down = c ? 1 - (t - c.t) / .12 : 0, ky = lerp(bt - 30 - 14 * bob(t), base - sz * .35, down);
+  ctx.save(); ctx.translate(kx + sz * .2, ky); ctx.rotate(-.35 + down * .25);
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(sz * .16, -sz * .05); ctx.lineTo(sz * .16, -sz * .85); ctx.quadraticCurveTo(0, -sz * .6, 0, 0); ctx.closePath();
+  ctx.fillStyle = '#dfe3e8'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
+  rr(sz * .02, -sz * 1.25, sz * .12, sz * .42, 5); ctx.fillStyle = '#7a5235'; ctx.fill(); ctx.stroke(); ctx.restore();
+  if (c && c.item && c.item.bonk === c.t) text('ガッ', kx, base - sz * .9, 28, INK, {stroke: 6});
+  } else if (tgt && t >= tgt.cueT + FLY && !J.mech) { const tx = slotX(tgt.x, bl, bw); ctx.beginPath(); ctx.moveTo(tx, bt + 8); ctx.lineTo(tx - 9, bt - 6); ctx.lineTo(tx + 9, bt - 6); ctx.closePath(); ctx.fillStyle = '#f6c64a'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.stroke(); }
+  // little bit-kun in the corner
+  const ta = t - G.tapT, rc = G.react && t - G.react.t < .7 ? G.react.k : null;
+  const kk = J.actor({tap: ta >= 0 && ta < .4 ? ta : null, near: !!(nextIt && nextIt.note.t - t < SPB * .5), miss: rc === 'miss', bonk: rc === 'bonk', fin: !!G.fin});
+  const fi = IMG[kk]; if (fi && fi.naturalWidth) { const fh = H * .34, fw = J.actorAR ? fh * J.actorAR : fh * fi.naturalWidth / fi.naturalHeight, fw2 = Math.min(fw, W * .42), fh2 = fh * fw2 / fw; ctx.drawImage(fi, W - fw2 - 2, H - fh2 - 4, fw2, fh2); }
+  if (rd && isSteam(rd.r) && G.phase === 'main') {
+    const a = clamp((t - rd.rb + .1) / .25, 0, 1), F = J.fog; ctx.save(); ctx.globalAlpha = a * F.a; ctx.fillStyle = F.col; ctx.fillRect(0, 0, W, H);
+    if (F.disco) for (let i = 0; i < 14; i++) { ctx.globalAlpha = a * .5; ctx.fillStyle = ['#e0533d', '#f6c64a', '#4fb3a9', '#9b7fd1'][i % 4]; ctx.beginPath(); ctx.arc((i * 71 + t * 160) % W, (i * 37 + t * 90 * (i % 3 + 1)) % H, 6 + i % 4 * 3, 0, 7); ctx.fill(); }
+    ctx.globalAlpha = a * .9; if (JOB === 'kitchen') for (let i = 0; i < 10; i++) { ctx.beginPath(); ctx.arc((i * 83 + t * 50 * (i % 2 ? 1 : -1)) % (W + 160) - 80, H * (.25 + (i % 4) * .14), W * .3, 0, 7); ctx.fillStyle = '#fff'; ctx.fill(); }
+    ctx.restore(); text(F.msg, W / 2, H * .36, 18, INK, {stroke: 5});
+  }
+}
+function frame() {
+  requestAnimationFrame(frame);
+  if (scene !== 'play' || !G) return;
+  const t = now(); update(t);
+  const rd = curRound(t), inResp = !!(rd && t >= rd.rb - .12 && t < rd.rb + BAR - .3);
+  const H0 = H, half = H0 / 2;
+  G.act = (G.act == null ? 0 : G.act) + ((inResp ? 1 : 0) - (G.act || 0)) * .2;
+  H = half; ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, half); ctx.clip(); boardView(t, rd);
+  ctx.fillStyle = `rgba(30,25,20,${.35 * (1 - G.act)})`; ctx.fillRect(0, 0, W, half); ctx.restore();
+  ctx.save(); ctx.translate(0, half); ctx.beginPath(); ctx.rect(0, 0, W, half); ctx.clip(); ctx.fillStyle = '#f7efe1'; ctx.fillRect(0, 0, W, H); bossView(t, rd);
+  ctx.fillStyle = `rgba(30,25,20,${.35 * G.act})`; ctx.fillRect(0, 0, W, half); ctx.restore();
+  H = H0; ctx.fillStyle = INK; ctx.fillRect(0, half - 2, W, 4);
+  flyDraw(t, rd, half);
+  hudDraw(t);
+}
+function hudDraw(t) {
+  if (G.phase === 'practice') {
+    const r0 = G.rounds[0], r1 = G.rounds[1];
+    if (t < r0.cb) text('拍に合わせて準備…', W / 2, H * .54, 18, INK, {stroke: 5});
+    else if (t < r1.cb) text(`お手本:聞いて、同じリズムで${J.verb}`, W / 2, H * .54, 18, INK, {stroke: 5});
+    else text(J.trapHint, W / 2, H * .54, 16, INK, {stroke: 5});
+    for (let i = 0; i < 2; i++) { ctx.beginPath(); ctx.arc(W / 2 - 14 + i * 28, H * .58, 8, 0, 7); ctx.fillStyle = i < G.pStreak ? '#4fb3a9' : '#fff'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.stroke(); }
+    if (G.pMsg && t - G.pMsg.t < .9 && !G.pClear) text(G.pMsg.ok ? 'いいね' : 'もう一回', W / 2, H * .63, 26, G.pMsg.ok ? '#4fb3a9' : '#e0533d', {stroke: 6, a: 1 - (t - G.pMsg.t) / .9});
+    if (G.pClear) text('OK。本番いくぞ。', W / 2, H * .63, 28, INK, {stroke: 7});
+  } else {
+    ctx.fillStyle = 'rgba(43,39,36,.15)'; rr(W * .25, 48, W * .5, 6, 3); ctx.fill();
+    ctx.fillStyle = INK; rr(W * .25, 48, W * .5 * clamp(t / G.end, 0, 1), 6, 3); ctx.fill();
+  }
+  for (const n of G.notes) if (n.res === 'good' && t - n.hitT < .4) text('おしい', W / 2, H * .7, 18, '#a07850', {stroke: 5, a: 1 - (t - n.hitT) / .4});
+  if (G.fin && t - G.fin < 1.6) text('キマった。', W / 2, H * .3, 40, INK, {stroke: 8, a: 1.6 - (t - G.fin)});
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
