@@ -53,7 +53,7 @@ const INK = '#2b2724';
 
 // ---------- images ----------
 const IMG = {};
-['chef0', 'chef1', 'chef2', 'chef3', 'chef4', 'cuc', 'cucS', 'dai', 'daiS', 'car', 'carS', 'mel', 'melS', 'fish', 'fishS', 'duck', 'furn', 'k0', 'k1', 'k2', 'k3', 'k4', 'k5', 'k6', 'k7', 'board', 'm0','m1','m2','m3','m4','cuM','cuL','cuK','mgr','tk','tkS','pc','bc','dr','lobby','counter','p0','p1','p2','p3','p4','bw0','bw1','bw2','bmg','pinU','pinL','ball','shoe','puff','a0','a1','a2','a3','a4','gd0','gd1','drv0','drv1','car0','car1','car2','car3','bike','tow','bdeck','balley','plot','pgate','s0','s1','s2','s3','s4','tab','cs0','cs1','cs2','it0','it1','it2','nm','ns','nt','ne','no','pl','bill']
+['chef0', 'chef1', 'chef2', 'chef3', 'chef4', 'cuc', 'cucS', 'dai', 'daiS', 'car', 'carS', 'mel', 'melS', 'fish', 'fishS', 'duck', 'furn', 'k0', 'k1', 'k2', 'k3', 'k4', 'k5', 'k6', 'k7', 'board', 'm0','m1','m2','m3','m4','cuM','cuL','cuK','mgr','tk','tkS','pc','bc','dr','lobby','counter','p0','p1','p2','p3','p4','bw0','bw1','bw2','bmg','pinU','pinL','ball','shoe','puff','a0','a1','a2','a3','a4','gd0','gd1','drv0','drv1','car0','car1','car2','car3','bike','tow','bdeck','balley','plot','pgate','s0','s1','s2','s3','s4','tab','cs0','cs1','cs2','it0','it1','it2','nm','ns','nt','ne','no','pl','bill','h0','h1','h2','h3','hs0','hb','hp','htv','hch','hfr','hbg','oboss','obg1','obg2','og0','og1','og2','ocl','o0','o1','o2','o3']
   .forEach(k => { const i = new Image(); i.src = 'img/' + k + '.webp'; IMG[k] = i; });
 function img(k, x, yb, h, o = {}) {
   const i = IMG[k]; if (!i || !i.naturalWidth) return;
@@ -449,69 +449,72 @@ function sushiScene(t, rd) {
   beatDots(t, top * .55 + 30);
 }
 
-// 2) お化け屋敷:画面切り替え(合図=廊下の足音 → 回答=物陰から「ばあっ」)
+function cover(k, x, y, w, h) { const i = IMG[k]; if (!i || !i.naturalWidth) return null; const s = Math.max(w / i.naturalWidth, h / i.naturalHeight), dw = i.naturalWidth * s, dh = i.naturalHeight * s, dx = x + (w - dw) / 2, dy = y + (h - dh) / 2; ctx.drawImage(i, dx, dy, dw, dh); return {dx, dy, dw, dh}; }
+// 2) お化け屋敷:画面切り替え(合図=廊下カメラの足音 → 回答=物陰から「ばあっ」)
 function obakeScene(t, rd) {
-  const resp = rd && t >= rd.rb - .12, gy = H * .72;
+  const resp = rd && t >= rd.rb - .12, gy = H * .74;
   if (!resp) {
-    ctx.fillStyle = '#2a2433'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = '#3a3146'; ctx.fillRect(0, gy, W, H - gy);
-    for (let i = 0; i < 4; i++) emo('🕯️', W * (.12 + i * .26), H * .3, 22, {a: .6 + .4 * Math.sin(t * 9 + i)});
-    text('廊下カメラ', W * .5, H * .17, 13, '#c9b8e8', {stroke: 0});
-    let cur = null;
-    if (rd) for (const it of rd.items) if (t >= it.cueT) { const x = slotX(it.x, W * .05, W * .9), K = J.kind[it.k]; text(K.trap ? '🧹' : it.k === 'grp' ? '👣👣' : '👣', x, gy + 34, K.trap ? 22 : 20, '#fff', {}); cur = t < it.cueT + .3 ? it : cur; }
-    const prog = rd ? clamp((t - rd.cb) / BAR, 0, 1) : 0, who = cur && J.kind[cur.k].trap ? '🧹' : cur && cur.k === 'grp' ? '👨‍👩‍👧' : '🧑‍🤝‍🧑';
-    emo(cur && J.kind[cur.k].trap ? '👵' : who, W * (.08 + .8 * prog), gy - 4 - (cur ? spring(t - cur.cueT) * 8 : 0), 50);
-    if (cur) { const K = J.kind[cur.k]; text(K.lbl, W * .5, H * .44, 24, K.trap ? '#f6c64a' : '#fff', {stroke: 6, sc: INK, a: 1 - (t - cur.cueT) / .3}); }
-    if (rd && t > rd.cb + 3 * SPB) text(J.next, W * .5, H * .86, 20, '#fff', {stroke: 5, sc: INK});
+    ctx.fillStyle = '#2a2433'; ctx.fillRect(0, 0, W, H);
+    // CCTV monitor
+    const mx = W * .08, my = H * .14, mw = W * .84, mh = H * .5;
+    rr(mx - 10, my - 10, mw + 20, mh + 20, 14); ctx.fillStyle = '#4a4552'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.stroke();
+    ctx.save(); rr(mx, my, mw, mh, 8); ctx.clip(); cover('obg1', mx, my, mw, mh);
+    let cur = null; if (rd) for (const it of rd.items) if (t >= it.cueT && t < it.cueT + .35) cur = it;
+    const prog = rd ? clamp((t - rd.cb) / BAR, 0, 1) : 0, k = cur ? (J.kind[cur.k].trap ? 'ocl' : cur.k === 'grp' ? 'og2' : 'og0') : 'og0';
+    img(k, mx + mw * (.5 + (prog - .5) * .25), my + mh * (.98 - .06 * Math.sin(prog * 3)), mh * (.38 + .3 * prog) * (cur ? 1 + .05 * spring(t - cur.cueT) : 1));
+    ctx.fillStyle = 'rgba(160,255,170,.06)'; for (let y = 0; y < mh; y += 4) ctx.fillRect(mx, my + y, mw, 1);
+    ctx.restore(); text('● REC 廊下', mx + 46, my + 16, 12, '#ff6b6b');
+    if (rd) for (const it of rd.items) if (t >= it.cueT) { const x = slotX(it.x, W * .05, W * .9), K = J.kind[it.k]; text(K.trap ? '🧹' : it.k === 'grp' ? '👣👣' : '👣', x, H * .72, K.trap ? 24 : 22, '#fff'); }
+    if (cur) { const K = J.kind[cur.k]; text(K.lbl, W * .5, H * .82, 28, K.trap ? '#f6c64a' : '#fff', {stroke: 6, sc: INK, a: 1 - (t - cur.cueT) / .35}); }
+    if (rd && t > rd.cb + 3 * SPB) text(J.next, W * .5, H * .9, 20, '#fff', {stroke: 5, sc: INK});
+    img('oboss', W * .86, H, H * .14, {a: .9});
   } else {
-    ctx.fillStyle = '#100c16'; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = '#5b1f2b'; for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.ellipse(i * W / 5, H * .2, W * .12, H * .45, 0, 0, 7); ctx.fill(); }
-    ctx.fillStyle = '#1d1726'; ctx.fillRect(0, gy, W, H - gy);
-    let pop = null, nextIt = null;
+    ctx.fillStyle = '#100c16'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = '#1d1726'; ctx.fillRect(0, gy, W, H - gy);
+    img('obg2', W * .5, H * .99, H * .34);
+    let pop = null;
     for (const it of rd.items) {
       const x = slotX(it.x, W * .05, W * .9), n = it.note, K = J.kind[it.k];
-      if (it.cut != null) { const d = t - it.cut; emo(it.k === 'grp' ? '🙀' : '😱', x, gy - 4 + Math.min(d, .4) * -40, it.k === 'grp' ? 46 : 38, {a: clamp(2 - d, 0, 1)}); if (d < .45) { pop = it; text(it.k === 'grp' ? 'ギャーーッ' : 'ギャッ', x, gy - 70, 18, '#fff', {stroke: 5, sc: INK}); } continue; }
-      if (it.bonk != null) { emo('👵', x, gy - 4, 38); if (t - it.bonk < 1) text('…なにしてんの', x, gy - 60, 15, '#f6c64a', {stroke: 5, sc: INK}); continue; }
-      if (it.missed != null) { emo('🚶', x + (t - it.missed) * 60, gy - 4, 34, {a: clamp(1 - (t - it.missed), 0, 1)}); continue; }
-      if (K.trap && n.res === 'pass') { emo('👵', x + (t - n.hitT) * 80, gy - 4, 34, {a: clamp(1 - (t - n.hitT), 0, 1)}); continue; }
-      ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.beginPath(); ctx.arc(x, gy - 20, 18, 0, 7); ctx.fill(); text(K.trap ? '🧹' : '👣', x, gy + 30, 18, '#fff');
-      if (!nextIt && !K.trap) nextIt = it;
+      if (it.cut != null) { const d = t - it.cut; img(it.k === 'grp' ? 'og2' : 'og1', x, gy - Math.min(d, .3) * 60, H * (it.k === 'grp' ? .16 : .13), {a: clamp(2 - d, 0, 1)}); if (d < .45) { pop = it; text(it.k === 'grp' ? 'ギャーーッ' : 'ギャッ', x, gy - H * .2, 18, '#fff', {stroke: 5, sc: INK}); } continue; }
+      if (it.bonk != null) { img('ocl', x, gy, H * .14); if (t - it.bonk < 1) text('…なにしてんの', x, gy - H * .17, 15, '#f6c64a', {stroke: 5, sc: INK}); continue; }
+      if (it.missed != null) { img('og0', x + (t - it.missed) * 80, gy, H * .12, {a: clamp(1 - (t - it.missed), 0, 1)}); continue; }
+      if (K.trap && n.res === 'pass') { img('ocl', x + (t - n.hitT) * 80, gy, H * .13, {a: clamp(1 - (t - n.hitT), 0, 1)}); continue; }
+      ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.beginPath(); ctx.ellipse(x, gy - 6, 22, 7, 0, 0, 7); ctx.fill(); text(K.trap ? '🧹' : '👣', x, gy + 22, 18, '#fff');
     }
-    const ta = t - G.tapT, out = ta >= 0 && ta < .25;
-    if (out) { emo('👻', pop ? slotX(pop.x, W * .05, W * .9) : W * .5, gy - 40, 70, {sx: 1 + .3 * spring(ta)}); text(pop ? 'ばあっ！' : 'ばあ…', W * .5, H * .3, 30, '#fff', {stroke: 7, sc: INK, a: 1 - ta / .25}); }
-    else { rr(W * .3, H * .78, W * .4, H * .14, 6); ctx.fillStyle = '#b08a5a'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke(); text('段ボール', W * .5, H * .85, 13, INK); emo('👀', W * .5, H * .8, 26); }
+    const ta = t - G.tapT, out = ta >= 0 && ta < .28, rc = G.react && t - G.react.t < .7 ? G.react.k : null;
+    if (out) { img('o1', pop ? slotX(pop.x, W * .05, W * .9) : W * .5, gy - H * .08, H * .22, {sx: 1 + .25 * spring(ta)}); text(pop ? 'ばあっ！' : 'ばあ…', W * .5, H * .22, 32, '#fff', {stroke: 7, sc: INK, a: 1 - ta / .28}); }
+    else img(rc ? 'o3' : G.praise && t - G.praise.t < 1.2 ? 'o2' : 'o0', W * .5, H * .84, H * .14);
     const wp = clamp((t - rd.rb + .12) / .18, 0, 1); if (wp < 1) { ctx.fillStyle = '#000'; ctx.fillRect(W * wp, 0, W, H); }
     fogOver(t, rd, 0, 0, W, gy);
   }
-  if (!rd || !resp) beatDots(t, H * .08); else beatDots(t, H * .08);
+  beatDots(t, H * .07);
 }
 
 // 3) 引っ越し:上から落ちてくる(2拍で落下、手元に来たら受ける)
 function hikkoshiScene(t, rd) {
-  ctx.fillStyle = '#bfe0f2'; ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = '#e8dcc8'; ctx.fillRect(W * .2, 0, W * .6, H * .7); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.strokeRect(W * .2, -4, W * .6, H * .7 + 4);
-  const wy = H * .14; rr(W * .34, wy, W * .32, H * .13, 4); ctx.fillStyle = '#3c4a5a'; ctx.fill(); ctx.stroke();
-  const throwIt = G.notes.find(n => !n.demo && n.item.cueT <= t && t < n.item.cueT + .3) || G.notes.find(n => n.item.cueT <= t && t < n.item.cueT + .3);
-  emo(throwIt ? '🙌' : '🧔', W * .5, wy + H * .12, 44);
-  if (throwIt) text(throwIt.item.k === 'fr' ? 'ゴゴゴ…' : 'ほいっ', W * .5, wy - 14, 20, throwIt.item.k === 'fr' ? '#e0533d' : INK, {stroke: 5, a: 1 - (t - throwIt.item.cueT) / .3});
-  ctx.fillStyle = '#9db36b'; ctx.fillRect(0, H * .7, W, H * .3); ctx.fillStyle = INK; ctx.fillRect(0, H * .7 - 1.5, W, 3);
-  const hy = H * .74, y0 = wy + H * .1;
-  // truck + stack
-  rr(W * .74, H * .68, W * .24, H * .14, 6); ctx.fillStyle = '#fff'; ctx.fill(); ctx.stroke(); text('トラック', W * .86, H * .72, 11, INK);
+  ctx.fillStyle = '#b9cdd6'; ctx.fillRect(0, 0, W, H);
+  const B = cover('hbg', 0, 0, W, H) || {dx: 0, dy: 0, dw: W, dh: H};
+  const wx = B.dx + B.dw * .5, wy = B.dy + B.dh * .4, hy = H * .8, catchY = hy - H * .2;
+  const throwN = G.notes.find(n => n.item.cueT <= t && t < n.item.cueT + .3);
+  img('hs0', wx + W * .02, wy + H * .08 + (throwN ? -spring(t - throwN.item.cueT) * 6 : 0), H * .14);
+  if (throwN) text(throwN.item.k === 'fr' ? 'ゴゴゴ…' : 'ほいっ', wx, wy - H * .07, 22, throwN.item.k === 'fr' ? '#e0533d' : INK, {stroke: 5, a: 1 - (t - throwN.item.cueT) / .3});
+  const tx = B.dx + B.dw * .8, ty = B.dy + B.dh * .86;
   const caught = G.notes.filter(n => !n.trap && (n.res === 'great' || n.res === 'good') && t - n.hitT > .25).length;
-  for (let i = 0; i < Math.min(caught, 8); i++) emo('📦', W * .86 + (i % 2 ? 8 : -8), H * .68 - i * 16, 24);
-  if (caught > 8) text('×' + caught, W * .86, H * .68 - 8 * 16 - 10, 13, INK, {stroke: 4});
+  for (let i = 0; i < Math.min(caught, 10); i++) img('hb', tx + (i % 2 ? 6 : -6), ty - i * H * .028, H * .04);
+  if (caught) text('×' + caught, tx, ty - Math.min(caught, 10) * H * .028 - 22, 14, INK, {stroke: 4});
+  const IK = {bx: 'hb', pl: 'hp', tv: 'htv', ch: 'hch', fr: 'hfr'};
   for (const n of G.notes) {
-    const it = n.item, d = t - it.cueT; if (d < 0) continue; const q = d / (n.t - it.cueT), e = J.kind[it.k].e, s = it.k === 'fr' ? 64 : 38;
-    if (n.res === 'great' || n.res === 'good') { const k = t - n.hitT; if (k < .25) { emo(e, W * .5 + k * 300, hy - 60 - Math.sin(k / .25 * Math.PI) * 40, s * .8); if (k < .2) text('ガシッ', W * .5, hy - 110, 20, INK, {stroke: 5}); } continue; }
-    if (n.res === 'bonk') { const k = t - n.hitT; if (k < 1.2) { emo(e, W * .5, hy - 10, s); text('ぐえっ', W * .5, hy - 90, 22, '#e0533d', {stroke: 5}); } continue; }
-    if (n.res === 'pass' || n.res === 'miss') { const k = t - n.hitT; if (k < .8) { emo(e, W * .5 + (n.trap ? -W * .25 : 0), H * .9, s, {rot: n.trap ? 0 : .5}); if (k < .4) text(n.trap ? 'ドスン（セーフ）' : 'ガシャ…', W * .5, H * .62, 18, n.trap ? INK : '#e0533d', {stroke: 5}); } continue; }
+    const it = n.item, d = t - it.cueT; if (d < 0) continue; const q = d / (n.t - it.cueT), k = IK[it.k], s = H * (it.k === 'fr' ? .16 : .08);
+    if (n.res === 'great' || n.res === 'good') { const z = t - n.hitT; if (z < .25) { img(k, W * .5 + z * 500, catchY - Math.sin(z / .25 * Math.PI) * 50, s * .8); if (z < .2) text('ガシッ', W * .5, catchY - s - 10, 22, INK, {stroke: 5}); } continue; }
+    if (n.res === 'bonk') continue;
+    if (n.res === 'pass' || n.res === 'miss') { const z = t - n.hitT; if (z < .8) { img(k, W * (n.trap ? .22 : .5), H * .96, s, {rot: n.trap ? 0 : .5}); if (z < .4) text(n.trap ? 'ドスン（セーフ）' : 'ガシャ…', W * .5, H * .56, 18, n.trap ? INK : '#e0533d', {stroke: 5}); } continue; }
     if (q > 1.2) continue;
-    const y = lerp(y0, hy - 50, q * q), x = W * .5 + (n.trap ? -W * .25 * Math.max(0, q - .2) * 0 : 0);
-    emo(e, x, y, s, {rot: q * (n.trap ? .3 : 2)});
+    img(k, wx + (W * .5 - wx) * q, lerp(wy + H * .04, catchY + s * .4, q * q), s * (.6 + .4 * q), {rot: q * (n.trap ? .3 : 2)});
   }
-  // landing zone + player
-  ctx.setLineDash([6, 6]); ctx.strokeStyle = '#e0533d'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(W * .5, hy - 60, 34, 12, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]);
-  const ta = t - G.tapT; emo(ta >= 0 && ta < .2 ? '🙆' : nearMiss() ? '🙇' : '🧍', W * .5, H * .93, 64, {sy: 1 - .03 * bob(t)});
+  ctx.setLineDash([6, 6]); ctx.strokeStyle = '#e0533d'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(W * .5, catchY, 36, 12, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+  const ta = t - G.tapT, rc = G.react && t - G.react.t < .8 ? G.react.k : null;
+  const pk = rc === 'bonk' ? 'h3' : ta >= 0 && ta < .22 ? 'h1' : G.praise && t - G.praise.t < 1.2 ? 'h2' : 'h0';
+  img(pk, W * .5, H * .98, H * (pk === 'h3' ? .17 : .22), {sy: 1 - .02 * bob(t)});
+  if (rc === 'bonk') text('ぐえっ', W * .5, H * .66, 24, '#e0533d', {stroke: 5});
   beatDots(t, H * .05 + 30);
 }
 
@@ -523,19 +526,19 @@ Object.assign(JOBS, {
     hit: (t, m, big) => (SND.nigiri(t, m), big && SND.don(t, m)), done: k => k, doneH: .3, word: ['キュッ', 'ギュギュッ'], bonkWord: '伝票は握らない',
     actor: () => 'k0', fog: {col: '#ffffff', a: .88, msg: 'シャリの湯気！ 覚えたリズムで', name: '湯気'},
     rank: ['it2', 'it0', 's4'], lines: {bonk: n => `伝票を${n}回握ったな。`, ok: 'お会計の音、ちゃんと聞き分けてた。', early: '握るのが少し早い。', late: '握るのが少し遅い。レーンが待ってるぞ。', fog: '湯気で迷ったな。', fin: '最後の特上、見事だ。'}},
-  obake: {name: 'お化け屋敷', boss: '主任', verb: 'おどかす', trapName: '清掃さん', trapHint: '足音どおりに「ばあっ」。ほうきの音はおどかさない', next: 'つぎ、おどかすぞ', icon: 'k0', scene: obakeScene,
+  obake: {name: 'お化け屋敷', boss: '主任', verb: 'おどかす', trapName: '清掃さん', trapHint: '足音どおりに「ばあっ」。ほうきの音はおどかさない', next: 'つぎ、おどかすぞ', icon: 'o2', scene: obakeScene,
     kind: {g1: {h: .3, lbl: 'コツ'}, g2: {h: .3, lbl: 'コツ'}, grp: {h: .4, lbl: 'ドタドタ', big: 1}, cl: {h: .3, lbl: 'シャッシャッ', trap: 1}},
     normal: ['g1', 'g2'], traps: ['cl'], big: 'grp',
     cue: (k, t, v) => k === 'cl' ? SND.sweep(t) : k === 'grp' ? SND.dota(t) : SND.koto(t, v),
     hit: (t, m, big) => SND.baa(t, big ? m - 5 : m), done: k => k, doneH: .3, word: ['ばあっ', 'ばばあっ'], bonkWord: '…なにしてんの',
     actor: () => 'k0', fog: {col: '#000', a: .92, msg: '停電！ 覚えたリズムで', name: '停電'},
-    rank: ['k7', 'k0', 'k6'], lines: {bonk: n => `清掃さんを${n}回おどかしたな。`, ok: '清掃さんには、ちゃんと会釈してた。', early: '出るのが少し早い。', late: '出るのが少し遅い。もう通り過ぎてる。', fog: '停電で迷ったな。', fin: '団体さま、全員泣いてた。'}},
-  hikkoshi: {name: '引っ越し', boss: '親方', verb: '受ける', trapName: '冷蔵庫', trapHint: '赤い輪に来たら受ける。「ゴゴゴ」は受けない', next: '', icon: 'k0', scene: hikkoshiScene, mech: 'drop',
+    rank: ['o2', 'oboss', 'o3'], lines: {bonk: n => `清掃さんを${n}回おどかしたな。`, ok: '清掃さんには、ちゃんと会釈してた。', early: '出るのが少し早い。', late: '出るのが少し遅い。もう通り過ぎてる。', fog: '停電で迷ったな。', fin: '団体さま、全員泣いてた。'}},
+  hikkoshi: {name: '引っ越し', boss: '親方', verb: '受ける', trapName: '冷蔵庫', trapHint: '赤い輪に来たら受ける。「ゴゴゴ」は受けない', next: '', icon: 'h0', scene: hikkoshiScene, mech: 'drop',
     kind: {bx: {e: '📦'}, pl: {e: '🪴'}, tv: {e: '📺'}, ch: {e: '🪑'}, fr: {e: '🧊', trap: 1}},
     normal: ['bx', 'pl', 'tv', 'ch'], traps: ['fr'], big: 'bx',
     cue: () => {}, hit: (t, m) => SND.catch(t, m), done: k => k, doneH: .3, word: ['ガシッ', 'ガシッ'], bonkWord: 'ぐえっ',
     actor: () => 'k0', fog: {col: '#000', a: .5, msg: '', name: '夕暮れ'},
-    rank: ['k7', 'k0', 'k6'], lines: {bonk: n => `冷蔵庫を${n}回受けたな。腰、大丈夫か。`, ok: '冷蔵庫はちゃんと見送った。正解だ。', early: '手を出すのが少し早い。', late: '受けるのが少し遅い。', fog: '', fin: ''}},
+    rank: ['h2', 'hs0', 'h3'], lines: {bonk: n => `冷蔵庫を${n}回受けたな。腰、大丈夫か。`, ok: '冷蔵庫はちゃんと見送った。正解だ。', early: '手を出すのが少し早い。', late: '受けるのが少し遅い。', fog: '', fin: ''}},
 });
 Object.assign(MR, {hikkoshi: ['Q1', 'Q2', 'Q1', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q5', 'Q8'], hikkoshiP: ['Q1', 'Q1', 'Q3', 'Q1', 'Q3', 'Q3']});
 let JOB = 'kitchen', J = JOBS.kitchen;
