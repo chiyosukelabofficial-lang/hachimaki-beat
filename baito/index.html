@@ -102,7 +102,7 @@ const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
 function initAudio() {
   if (AC) { AC.resume(); return; }
   AC = new (window.AudioContext || window.webkitAudioContext)();
-  const comp = AC.createDynamicsCompressor(); master = AC.createGain(); master.gain.value = .85; master.connect(comp); comp.connect(AC.destination); BGM = AC.createGain(); BGM.gain.value = .32; BGM.connect(master); KICK = AC.createGain(); KICK.gain.value = .55; KICK.connect(master);
+  const comp = AC.createDynamicsCompressor(); master = AC.createGain(); master.gain.value = .85; master.connect(comp); comp.connect(AC.destination); BGM = AC.createGain(); BGM.gain.value = .3; BGM.connect(master); KICK = AC.createGain(); KICK.gain.value = .6; KICK.connect(master);
   NB = AC.createBuffer(1, AC.sampleRate, AC.sampleRate); const d = NB.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   const s = AC.createBufferSource(); s.buffer = AC.createBuffer(1, 1, 22050); s.connect(AC.destination); s.start(0);
 }
@@ -120,10 +120,17 @@ function noise(t, dur, vol, f, type = 'highpass', q = 1) {
   g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur); s.start(t, Math.random() * .5); s.stop(t + dur + .02);
 }
 const SND = {
-  kick: t => osc('sine', 150, t, .2, .9, {to: 42, toT: .12}),
-  snare: t => { noise(t, .13, .45, 1600); osc('triangle', 190, t, .08, .25); },
+  kick: t => { if (BGM) { BGM.gain.setValueAtTime(.06, t); BGM.gain.linearRampToValueAtTime(.3, t + SPB * .55); } osc('sine', 170, t, .22, 1, {to: 45, toT: .1}); osc('square', 900, t, .012, .18, {lp: 3000}); osc('sine', 60, t, .3, .5); },
+  kick2: t => osc('sine', 150, t, .15, .6, {to: 45, toT: .08}),
+  saw: (t, m, d, v = .045) => [-9, 0, 9].forEach(dt => { const o = AC.createOscillator(), g = AC.createGain(), f = AC.createBiquadFilter(); o.type = 'sawtooth'; o.frequency.value = mtof(m); o.detune.value = dt; f.type = 'lowpass'; f.frequency.setValueAtTime(900, t); f.frequency.linearRampToValueAtTime(2600, t + d * .5); o.connect(f); f.connect(g); g.connect(OUT || master); g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + .03); g.gain.setValueAtTime(v, t + d - .05); g.gain.linearRampToValueAtTime(.0001, t + d); o.start(t); o.stop(t + d + .02); }),
+  hook: (t, m, d) => { osc('square', mtof(m), t, d, .12, {lp: 3200}); osc('square', mtof(m + 12), t, d * .7, .04, {lp: 5000}); },
+  hey: t => { noise(t, .12, .5, 900, 'bandpass', 3); noise(t, .1, .35, 2400, 'bandpass', 4); osc('sawtooth', 220, t, .12, .2, {to: 170, lp: 1800}); },
+  riser: t => { const d = BAR * .5; const o = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(); o.buffer = NB; o.loop = true; f.type = 'bandpass'; f.Q.value = 2; f.frequency.setValueAtTime(400, t); f.frequency.exponentialRampToValueAtTime(8000, t + d); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.25, t + d); o.connect(f); f.connect(g); g.connect(OUT || master); o.start(t); o.stop(t + d); },
+  ohat: t => noise(t, .12, .08, 6000),
+  crash: t => { noise(t, .9, .18, 5000); noise(t, .5, .12, 3000, 'bandpass', .8); },
+  snare: t => { noise(t, .16, .55, 1400); osc('triangle', 200, t, .09, .35, {to: 150}); },
   hat: (t, v = .12) => noise(t, .035, v, 7500),
-  bass: (t, m, d) => { osc('sawtooth', mtof(m), t, d, .3, {lp: 520}); osc('sine', mtof(m), t, d, .35); },
+  bass: (t, m, d) => { osc('sawtooth', mtof(m), t, d, .32, {lp: 700}); osc('square', mtof(m - 12), t, d, .18, {lp: 300}); },
   stab: (t, ms) => ms.forEach(m => osc('triangle', mtof(m), t, .14, .07, {lp: 2400})),
   lead: (t, m, d) => { osc('square', mtof(m), t, d, .06, {lp: 1800, a: .01}); osc('triangle', mtof(m + 12), t, d * .7, .04); },
   hoi: (t, m) => { osc('sawtooth', mtof(m), t, .13, .3, {to: mtof(m) * 1.32, toT: .08, lp: 1700}); osc('square', mtof(m - 12), t, .1, .08, {lp: 900}); noise(t, .03, .12, 3000); },
@@ -307,13 +314,25 @@ function build(list, practice) {
   for (let b = 0; b < bars; b++) {
     const t0 = b * BAR, ch = PROG[b % 4], last = b === bars - 1, resp = b >= INTRO && (b - INTRO) % 2 === 1;
     if (last) { ev.push({t: t0, f: SND.kick}, {t: t0, f: t => SND.stab(t, ch.map(m => m + 12))}, {t: t0, f: t => SND.bass(t, ch[0] - 12, 1.2)}); break; }
+    // 激しめビート:4つ打ちキック+裏の追いキック、2・4拍スネア、16分ハイハット+裏オープン、16分うねりベース
     for (let q = 0; q < 4; q++) ev.push({t: t0 + q * SPB, f: SND.kick});
-    for (let q = 0; q < 8; q++) ev.push({t: t0 + q * SPB / 2, f: t => SND.hat(t, q % 2 ? .1 : .05)});
+    if (b >= INTRO) ev.push({t: t0 + 2.75 * SPB, f: SND.kick2});
+    for (let q = 0; q < 16; q++) ev.push({t: t0 + q * SPB / 4, f: q % 4 === 2 ? SND.ohat : t => SND.hat(t, q % 2 ? .06 : .1)});
+    if (b >= 1) [1, 3].forEach(q => ev.push({t: t0 + q * SPB, f: SND.snare}));
     if (!resp && b >= INTRO) [1, 3].forEach(q => ev.push({t: t0 + q * SPB, f: SND.clap}));
     if (b === 1) for (let q = 0; q < 4; q++) ev.push({t: t0 + q * SPB, f: t => SND.count(t, q), nb: 1});
-    [[0, 0, .4], [.75, 12, .2], [1.5, 7, .3], [2, 0, .4], [2.75, 12, .2], [3.5, 7, .3]].forEach(([q, o, d]) => ev.push({t: t0 + q * SPB, f: t => SND.bass(t, ch[0] - 24 + o, d)}));
+    if (b >= INTRO && !resp) ev.push({t: t0, f: SND.crash});
+    if (b >= INTRO && !resp) [3.5, 3.75].forEach(q => ev.push({t: t0 + q * SPB, f: SND.snare}));
+    for (let q = 0; q < 16; q++) { const o = [0, 0, 12, 0, 0, 12, 0, 7, 0, 0, 12, 0, 10, 0, 12, 7][q]; ev.push({t: t0 + q * SPB / 4, f: t => SND.bass(t, ch[0] - 24 + o, SPB / 4 * .9)}); }
     if (!resp) [.5, 1.5, 2.5, 3.5].forEach(q => ev.push({t: t0 + q * SPB, f: t => SND.stab(t, ch.map(m => m + 12))}));
-    if (b === 0) [[0, 7], [.5, 9], [1, 12], [2, 9], [3, 7]].forEach(([q, d]) => ev.push({t: t0 + q * SPB, f: t => SND.lead(t, 60 + d, .2)}));
+    // 超ノコギリ波のパッド(キックでポンプする)
+    [0, 1, 2, 3].forEach(q => ev.push({t: t0 + q * SPB, f: t => ch.forEach(m => SND.saw(t, m, SPB * .95))}));
+    // イントロと4ラウンドごとにフック(耳に残るメロ)。合図の小節には入れない
+    const HOOK = [[0, 72, .5], [.5, 72, .5], [1.5, 69, .5], [2, 72, .5], [2.5, 74, .5], [3, 77, .75], [4, 76, .5], [4.5, 74, .5], [5, 72, .5], [5.5, 69, .5], [6, 70, .5], [6.5, 72, 1.25]];
+    const hookBar = b < INTRO || last;
+    if (hookBar) HOOK.filter(([q]) => (b % 2 ? q >= 4 : q < 4)).forEach(([q, m, d]) => ev.push({t: t0 + (q % 4) * SPB, f: t => SND.hook(t, m, d * SPB)}));
+    if (b === INTRO - 1) ev.push({t: t0 + 2 * SPB, f: SND.riser}, {t: t0 + 3.5 * SPB, f: SND.hey});
+    if (b >= INTRO && (b - INTRO) % 8 === 7) ev.push({t: t0 + 2 * SPB, f: SND.riser});
   }
   ev.forEach(e => { if (!e.nb) e.bgm = e.f === SND.kick ? 2 : 1; });
   list.forEach((name, r) => {
