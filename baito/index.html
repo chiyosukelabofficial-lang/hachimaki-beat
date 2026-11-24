@@ -122,7 +122,7 @@ function noise(t, dur, vol, f, type = 'highpass', q = 1) {
 const SND = {
   kick: t => { if (BGM) { BGM.gain.setValueAtTime(.06, t); BGM.gain.linearRampToValueAtTime(.3, t + SPB * .55); } osc('sine', 170, t, .22, 1, {to: 45, toT: .1}); osc('square', 900, t, .012, .18, {lp: 3000}); osc('sine', 60, t, .3, .5); },
   kick2: t => osc('sine', 150, t, .15, .6, {to: 45, toT: .08}),
-  saw: (t, m, d, v = .045) => [-9, 0, 9].forEach(dt => { const o = AC.createOscillator(), g = AC.createGain(), f = AC.createBiquadFilter(); o.type = 'sawtooth'; o.frequency.value = mtof(m); o.detune.value = dt; f.type = 'lowpass'; f.frequency.setValueAtTime(900, t); f.frequency.linearRampToValueAtTime(2600, t + d * .5); o.connect(f); f.connect(g); g.connect(OUT || master); g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + .03); g.gain.setValueAtTime(v, t + d - .05); g.gain.linearRampToValueAtTime(.0001, t + d); o.start(t); o.stop(t + d + .02); }),
+  saw: (t, m, d, v = .06) => [0].forEach(dt => { const o = AC.createOscillator(), g = AC.createGain(), f = AC.createBiquadFilter(); o.type = 'sawtooth'; o.frequency.value = mtof(m); o.detune.value = dt; f.type = 'lowpass'; f.frequency.setValueAtTime(900, t); f.frequency.linearRampToValueAtTime(2600, t + d * .5); o.connect(f); f.connect(g); g.connect(OUT || master); g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + .03); g.gain.setValueAtTime(v, t + d - .05); g.gain.linearRampToValueAtTime(.0001, t + d); o.start(t); o.stop(t + d + .02); }),
   hook: (t, m, d) => { osc('square', mtof(m), t, d, .12, {lp: 3200}); osc('square', mtof(m + 12), t, d * .7, .04, {lp: 5000}); },
   hey: t => { noise(t, .12, .5, 900, 'bandpass', 3); noise(t, .1, .35, 2400, 'bandpass', 4); osc('sawtooth', 220, t, .12, .2, {to: 170, lp: 1800}); },
   riser: t => { const d = BAR * .5; const o = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(); o.buffer = NB; o.loop = true; f.type = 'bandpass'; f.Q.value = 2; f.frequency.setValueAtTime(400, t); f.frequency.exponentialRampToValueAtTime(8000, t + d); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.25, t + d); o.connect(f); f.connect(g); g.connect(OUT || master); o.start(t); o.stop(t + d); },
@@ -130,7 +130,7 @@ const SND = {
   crash: t => { noise(t, .9, .18, 5000); noise(t, .5, .12, 3000, 'bandpass', .8); },
   snare: t => { noise(t, .16, .55, 1400); osc('triangle', 200, t, .09, .35, {to: 150}); },
   hat: (t, v = .12) => noise(t, .035, v, 7500),
-  bass: (t, m, d) => { osc('sawtooth', mtof(m), t, d, .32, {lp: 700}); osc('square', mtof(m - 12), t, d, .18, {lp: 300}); },
+  bass: (t, m, d) => osc('sawtooth', mtof(m), t, d, .36, {lp: 700}),
   stab: (t, ms) => ms.forEach(m => osc('triangle', mtof(m), t, .14, .07, {lp: 2400})),
   lead: (t, m, d) => { osc('square', mtof(m), t, d, .06, {lp: 1800, a: .01}); osc('triangle', mtof(m + 12), t, d * .7, .04); },
   hoi: (t, m) => { osc('sawtooth', mtof(m), t, .13, .3, {to: mtof(m) * 1.32, toT: .08, lp: 1700}); osc('square', mtof(m - 12), t, .1, .08, {lp: 900}); noise(t, .03, .12, 3000); },
@@ -316,17 +316,15 @@ function build(list, practice) {
     if (last) { ev.push({t: t0, f: SND.kick}, {t: t0, f: t => SND.stab(t, ch.map(m => m + 12))}, {t: t0, f: t => SND.bass(t, ch[0] - 12, 1.2)}); break; }
     // 激しめビート:4つ打ちキック+裏の追いキック、2・4拍スネア、16分ハイハット+裏オープン、16分うねりベース
     for (let q = 0; q < 4; q++) ev.push({t: t0 + q * SPB, f: SND.kick});
-    if (b >= INTRO) ev.push({t: t0 + 2.75 * SPB, f: SND.kick2});
-    for (let q = 0; q < 16; q++) ev.push({t: t0 + q * SPB / 4, f: q % 4 === 2 ? SND.ohat : t => SND.hat(t, q % 2 ? .06 : .1)});
+    for (let q = 0; q < 8; q++) ev.push({t: t0 + q * SPB / 2, f: q % 2 ? SND.ohat : t => SND.hat(t, .08)});
     if (b >= 1) [1, 3].forEach(q => ev.push({t: t0 + q * SPB, f: SND.snare}));
     if (!resp && b >= INTRO) [1, 3].forEach(q => ev.push({t: t0 + q * SPB, f: SND.clap}));
     if (b === 1) for (let q = 0; q < 4; q++) ev.push({t: t0 + q * SPB, f: t => SND.count(t, q), nb: 1});
     if (b >= INTRO && !resp) ev.push({t: t0, f: SND.crash});
-    if (b >= INTRO && !resp) [3.5, 3.75].forEach(q => ev.push({t: t0 + q * SPB, f: SND.snare}));
-    for (let q = 0; q < 16; q++) { const o = [0, 0, 12, 0, 0, 12, 0, 7, 0, 0, 12, 0, 10, 0, 12, 7][q]; ev.push({t: t0 + q * SPB / 4, f: t => SND.bass(t, ch[0] - 24 + o, SPB / 4 * .9)}); }
-    if (!resp) [.5, 1.5, 2.5, 3.5].forEach(q => ev.push({t: t0 + q * SPB, f: t => SND.stab(t, ch.map(m => m + 12))}));
-    // 超ノコギリ波のパッド(キックでポンプする)
-    [0, 1, 2, 3].forEach(q => ev.push({t: t0 + q * SPB, f: t => ch.forEach(m => SND.saw(t, m, SPB * .95))}));
+    for (let q = 0; q < 8; q++) { const o = [0, 12, 0, 12, 0, 12, 7, 12][q]; ev.push({t: t0 + q * SPB / 2, f: t => SND.bass(t, ch[0] - 24 + o, SPB / 2 * .8)}); }
+    if (!resp) [.5, 2.5].forEach(q => ev.push({t: t0 + q * SPB, f: t => SND.stab(t, ch.map(m => m + 12))}));
+    // パッド(1小節1回、キックでポンプする)
+    ev.push({t: t0, f: t => ch.forEach(m => SND.saw(t, m, BAR * .98))});
     // イントロと4ラウンドごとにフック(耳に残るメロ)。合図の小節には入れない
     const HOOK = [[0, 72, .5], [.5, 72, .5], [1.5, 69, .5], [2, 72, .5], [2.5, 74, .5], [3, 77, .75], [4, 76, .5], [4.5, 74, .5], [5, 72, .5], [5.5, 69, .5], [6, 70, .5], [6.5, 72, 1.25]];
     const hookBar = b < INTRO || last;
@@ -631,7 +629,7 @@ function start(phase) {
 function ev2(rd) { if (['flow', 'quick', 'drop'].includes(J.mech)) return; G.ev.push({t: rd.rb - .08, f: SND.wipe}); G.ev.sort((a, b) => a.t - b.t); }
 setInterval(() => {
   if (!G || G.over) return;
-  const la = AC.currentTime + .2 - G.t0;
+  const la = AC.currentTime + .4 - G.t0;
   while (G.ei < G.ev.length && G.ev[G.ei].t < la) { const e = G.ev[G.ei++]; OUT = e.bgm === 2 ? KICK : e.bgm ? BGM : master; e.f(Math.max(AC.currentTime, G.t0 + e.t)); OUT = master; }
 }, 20);
 
