@@ -32,6 +32,7 @@ table{border-collapse:collapse;width:100%}td{padding:3px 2px}td:last-child{text-
 <body>
 <canvas id="cv"></canvas>
 <div id="title" class="ov on">
+  <img src="img/title_kv.webp" style="width:min(300px,80vw)" onerror="this.remove()">
   <div class="logo">回せ！<b>美容室</b></div>
   <div style="font-weight:700;font-size:14px">小さな美容室を、日本一の店に。</div>
   <div class="card">
@@ -64,7 +65,7 @@ table{border-collapse:collapse;width:100%}td{padding:3px 2px}td:last-child{text-
   <div class="rbox" id="rb3"><div class="rl">満足度</div><div class="rv" id="rv3"></div><div class="rs" id="rs3"></div></div>
   <div id="rEnd" style="display:none;flex-direction:column;align-items:center;gap:12px;width:100%">
     <div id="rTitle" style="font-size:22px;font-weight:900"></div>
-    <div class="card" style="width:300px"><div style="font-weight:900;margin-bottom:4px">📒 本日の収支</div><table id="rPL"></table></div>
+    <div class="card" style="width:300px"><div style="font-weight:900;margin-bottom:4px"><img id="plImg" style="height:56px;float:right;margin:-6px -4px 0 0">📒 本日の収支</div><table id="rPL"></table></div>
     <button class="btn" id="toShop">設備投資へ</button>
     <button class="btn sub" id="toTitle">タイトルへ</button>
   </div>
@@ -85,9 +86,9 @@ addEventListener('resize', resize); resize();
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), lerp = (a, b, k) => a + (b - a) * k, rnd = (a, b) => a + Math.random() * (b - a);
 
 // ---------- 画像(届いたら img/<key>.webp を置くだけで差し替わる) ----------
-const KEYS = ['bg', 'st0', 'st1', 'st2', 'sa0', 'sa1', 'sa2', 'sb0', 'sb1', 'sb2', 'as0', 'as1', 'as2', 'as3', 'sc0', 'sc1', 'sc2', 'ad0', 'ad1', 'ad2', 'ad3',
+const KEYS = ['bg', 'bg2', 'st0', 'st1', 'st2', 'sa0', 'sa1', 'sa2', 'sb0', 'sb1', 'sb2', 'as0', 'as1', 'as2', 'as3', 'sc0', 'sc1', 'sc2', 'ad0', 'ad1', 'ad2', 'ad3',
   'c0', 'c0s', 'c0a', 'c1', 'c1s', 'c1a', 'c2', 'c2s', 'c2a', 'c3', 'c3s', 'c3a', 'ch', 'sh', 'reg', 'sofa', 'hair', 'timer',
-  'i_cut', 'i_col', 'i_perm', 'i_bang', 'i_claim', 'i_help', 'i_star'];
+  'i_cut', 'i_col', 'i_perm', 'i_bang', 'i_claim', 'i_help', 'i_star', 'reg_auto', 'dryer', 'rest_sofa', 'flyer', 'wait2'];
 const IM = {};
 KEYS.forEach(k => { const i = new Image(); i.onload = () => i.ok = 1; i.src = 'img/' + k + '.webp'; IM[k] = i; });
 const has = k => IM[k] && IM[k].ok;
@@ -178,16 +179,16 @@ const DAYS = {
 };
 const WAGE = {st: 0, sa: 12000, sb: 12000, sc: 11000, as: 8000, ad: 8000}, MAT = {cut: 200, color: 900, perm: 1300, bang: 0};
 const SHOP = [
-  {k: 'chair', ic: '💺', nm: 'カット席を増やす', ds: '席+1(最大6)', price: 120000, max: 3},
-  {k: 'sh', ic: '🚿', nm: 'シャンプー台を増やす', ds: '台+1(最大4)', price: 90000, max: 2},
-  {k: 'hire_sb', ic: '👨', nm: 'ケンタを雇う', ds: 'スタイリスト。日当¥12,000', price: 50000, max: 1},
-  {k: 'hire_ad', ic: '👧', nm: 'ハナを雇う', ds: 'アシスタント。自動で掃除。日当¥8,000', price: 40000, max: 1},
-  {k: 'hire_sc', ic: '🧑‍🦱', nm: 'ユウを雇う', ds: 'スタイリスト(少し遅い)。日当¥11,000', price: 50000, max: 1},
-  {k: 'autoReg', ic: '🏧', nm: '自動レジ', ds: 'お会計にスタッフが要らなくなる', price: 250000, max: 1},
-  {k: 'dryer', ic: '💨', nm: '速乾ドライヤー', ds: 'シャンプー・流し・仕上げが30%速い', price: 150000, max: 1},
-  {k: 'restSofa', ic: '🛋', nm: '休憩室にソファ', ds: '休憩の回復が2倍', price: 60000, max: 1},
-  {k: 'ad', ic: '📣', nm: 'チラシ・SNS広告', ds: '来客+15%(最大3段階)', price: 80000, max: 3},
-  {k: 'wait', ic: '🪑', nm: '待合を広げる', ds: '待てる人数+2(最大2段階)', price: 50000, max: 2},
+  {k: 'chair', ic: 'u_chair', nm: 'カット席を増やす', ds: '席+1(最大6)', price: 120000, max: 3},
+  {k: 'sh', ic: 'u_sh', nm: 'シャンプー台を増やす', ds: '台+1(最大4)', price: 90000, max: 2},
+  {k: 'hire_sb', ic: 'sb0', nm: 'ケンタを雇う', ds: 'スタイリスト。日当¥12,000', price: 50000, max: 1},
+  {k: 'hire_ad', ic: 'ad0', nm: 'ハナを雇う', ds: 'アシスタント。自動で掃除。日当¥8,000', price: 40000, max: 1},
+  {k: 'hire_sc', ic: 'sc0', nm: 'ユウを雇う', ds: 'スタイリスト(少し遅い)。日当¥11,000', price: 50000, max: 1},
+  {k: 'autoReg', ic: 'reg_auto', nm: '自動レジ', ds: 'お会計にスタッフが要らなくなる', price: 250000, max: 1},
+  {k: 'dryer', ic: 'dryer', nm: '速乾ドライヤー', ds: 'シャンプー・流し・仕上げが30%速い', price: 150000, max: 1},
+  {k: 'restSofa', ic: 'rest_sofa', nm: '休憩室にソファ', ds: '休憩の回復が2倍', price: 60000, max: 1},
+  {k: 'ad', ic: 'flyer', nm: 'チラシ・SNS広告', ds: '来客+15%(最大3段階)', price: 80000, max: 3},
+  {k: 'wait', ic: 'wait2', nm: '待合を広げる', ds: '待てる人数+2(最大2段階)', price: 50000, max: 2},
 ];
 const SAVE0 = {day: 1, cash: 30000, star: 3, up: {}, best: 0};
 let SV = load();
@@ -373,7 +374,8 @@ function closeModal() { $('#modal').classList.remove('on'); G.modal = false; }
 
 // ---------- 描画 ----------
 function drawBG() {
-  if (has('bg')) { const i = IM.bg, s = Math.max(W / i.naturalWidth, H / i.naturalHeight); ctx.drawImage(i, (W - i.naturalWidth * s) / 2, (H - i.naturalHeight * s) / 2, i.naturalWidth * s, i.naturalHeight * s); return; }
+  const bk = UPL('expand') && has('bg2') ? 'bg2' : 'bg';
+  if (has(bk)) { ctx.fillStyle = '#e8d7bd'; ctx.fillRect(0, 0, W, H); ctx.drawImage(IM[bk], 0, 64, W, 576); return; }
   ctx.fillStyle = '#cfe7df'; ctx.fillRect(0, 0, W, 300); ctx.fillStyle = '#e8d7bd'; ctx.fillRect(0, 300, W, H);
   ctx.strokeStyle = 'rgba(0,0,0,.06)'; ctx.lineWidth = 2; for (let x = 0; x < W; x += 39) { ctx.beginPath(); ctx.moveTo(x, 300); ctx.lineTo(x, 640); ctx.stroke(); }
   box(DOOR.x - 30, 480, 54, 120, 4, 'rgba(190,225,235,.7)'); text('入口', DOOR.x - 3, 470, 11);
@@ -449,6 +451,10 @@ function draw(now) {
   G.chairs.forEach(drawChair);
   // 休憩室・レジ・ソファ
   box(REST.x, REST.y, REST.w, REST.h, 10, 'rgba(255,255,255,.55)', 2.5); text('休憩室', REST.x + REST.w / 2, REST.y + 14, 12);
+  if (UPL('restSofa') && has('rest_sofa')) img('rest_sofa', REST.x + REST.w / 2, REST.y + REST.h - 4, 30);
+  if (UPL('dryer') && has('dryer')) img('dryer', 12, SH_Y - 70, 40);
+  if (UPL('ad') && has('flyer')) img('flyer', DOOR.x + 2, DOOR.y - 128, 34);
+  if (UPL('wait') && has('wait2')) img('wait2', SOFA.x + 250, SOFA.y + 4, 34);
   G.shs.forEach(drawSh);
   if (has('sofa')) img('sofa', SOFA.x + 120, SOFA.y + 4, 60); else box(SOFA.x, SOFA.y - 34, 240, 34, 12, '#b07a5a');
   text('待合', SOFA.x + 120, SOFA.y + 14, 11, INK, {stroke: 3});
@@ -456,7 +462,7 @@ function draw(now) {
   // 奥(席)→スタッフ→手前の順
   G.custs.filter(c => c.loc === 'chair' || c.loc === 'sh').forEach(drawCust);
   G.staff.filter(s => s.y < 450).forEach(drawStaff);
-  if (has('reg')) img('reg', REG.x, REG.y + 10, 70); else { box(REG.x - 44, REG.y - 40, 88, 50, 6, '#a87a4f'); box(REG.x - 16, REG.y - 62, 32, 24, 4, '#ddd'); }
+  if (UPL('autoReg') && has('reg_auto')) img('reg_auto', REG.x, REG.y + 10, 80); else if (has('reg')) img('reg', REG.x, REG.y + 10, 70); else { box(REG.x - 44, REG.y - 40, 88, 50, 6, '#a87a4f'); box(REG.x - 16, REG.y - 62, 32, 24, 4, '#ddd'); }
   text(UPL('autoReg') ? '自動レジ' : 'レジ', REG.x, REG.y + 22, 11, UPL('autoReg') ? '#4a90c8' : INK, {stroke: 3});
   G.custs.filter(c => !(c.loc === 'chair' || c.loc === 'sh')).sort((a, b) => a.y - b.y).forEach(drawCust);
   G.staff.filter(s => s.y >= 450).forEach(drawStaff);
@@ -522,6 +528,7 @@ function endDay() {
   const before = SV.cash; SV.cash += profit; SV.star = G.star; SV.day++; SV.best = Math.max(SV.best || 0, total); save();
   $('#rTitle').textContent = T;
   const row = (a, b, c = '') => `<tr><td>${a}</td><td style="color:${c}">${b}</td></tr>`, yen = v => (v < 0 ? '−¥' : '¥') + Math.abs(v).toLocaleString();
+  $('#plImg').src = 'img/' + (profit >= 0 ? 'pl_up' : 'pl_down') + '.webp';
   $('#rPL').innerHTML = row('売上', yen(G.sales)) + (G.bonus ? row('応援手当', yen(G.bonus)) : '') + row('人件費', yen(-wages), '#e0533d') + row('材料費', yen(-G.mat), '#e0533d') + row('家賃', yen(-rent), '#e0533d')
     + `<tr><td colspan="2"><hr style="border:none;border-top:2px dashed #2b2724;margin:4px 0"></td></tr>` + row('<b>本日の利益</b>', yen(profit), profit >= 0 ? '#2f8f5b' : '#e0533d') + row('所持金', yen(before) + ' → ' + yen(SV.cash));
   $('#rs0').textContent = `お会計 ${G.served}人 ／ 待たせて帰った ${G.lost}人 ／ 満席 ${G.turned}人`;
@@ -546,14 +553,14 @@ function showTitle() {
   scene = 'title'; G = null; ['#result', '#shop'].forEach(q => $(q).classList.remove('on')); $('#title').classList.add('on'); SV = load();
   const fresh = SV.day === 1 && !Object.keys(SV.up).length;
   $('#tSave').style.display = fresh ? 'none' : 'block';
-  $('#tSave').innerHTML = `<b style="font-size:18px">${SV.day}日目(${isHoliday(SV.day) ? '休日' : '平日'})</b><br>所持金 ¥${SV.cash.toLocaleString()} ・ 口コミ★${SV.star.toFixed(1)}<br><small>${buildStore().name}・スタッフ${buildStore().staff.length}人・最高売上 ¥${(SV.best || 0).toLocaleString()}</small>`;
+  $('#tSave').innerHTML = `<img src="img/${UPL('expand') ? 'shop_front2' : 'shop_front'}.webp" style="height:70px;display:block;margin:0 auto 4px"><b style="font-size:18px">${SV.day}日目(${isHoliday(SV.day) ? '休日' : '平日'})</b><br>所持金 ¥${SV.cash.toLocaleString()} ・ 口コミ★${SV.star.toFixed(1)}<br><small>${buildStore().name}・スタッフ${buildStore().staff.length}人・最高売上 ¥${(SV.best || 0).toLocaleString()}</small>`;
   $('#go').textContent = fresh ? '開店する' : '続きから開店'; $('#reset').style.display = fresh ? 'none' : 'inline-block';
 }
 function openShop() {
   $('#result').classList.remove('on'); $('#shop').classList.add('on');
-  $('#shopCash').textContent = `所持金 ¥${SV.cash.toLocaleString()}`;
+  $('#shopCash').innerHTML = `<img src="img/u_money.webp" style="height:34px;vertical-align:middle"> 所持金 ¥${SV.cash.toLocaleString()}`;
   $('#shopList').innerHTML = SHOP.map(it => { const lv = UPL(it.k), max = lv >= it.max, can = !max && SV.cash >= it.price;
-    return `<div class="si"><div class="ic">${it.ic}</div><div><div class="nm">${it.nm}${it.max > 1 ? ` <small>${lv}/${it.max}</small>` : ''}</div><div class="ds">${it.ds}</div></div><button data-k="${it.k}" ${can ? '' : 'disabled'}>${max ? '購入済み' : '¥' + it.price.toLocaleString()}</button></div>`; }).join('');
+    return `<div class="si"><div class="ic"><img src="img/${it.ic}.webp" style="width:40px;height:40px;object-fit:contain" onerror="this.replaceWith('🛠')"></div><div><div class="nm">${it.nm}${it.max > 1 ? ` <small>${lv}/${it.max}</small>` : ''}</div><div class="ds">${it.ds}</div></div><button data-k="${it.k}" ${can ? '' : 'disabled'}>${max ? '購入済み' : '¥' + it.price.toLocaleString()}</button></div>`; }).join('');
   $('#shopList').querySelectorAll('button').forEach(b => b.onclick = () => { const it = SHOP.find(x => x.k === b.dataset.k); if (SV.cash < it.price) return; SV.cash -= it.price; SV.up[it.k] = UPL(it.k) + 1; save(); au(); SFX.cash(); openShop(); });
   $('#nextDay').textContent = `${SV.day}日目(${isHoliday(SV.day) ? '休日' : '平日'})を開店`;
 }
