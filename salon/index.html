@@ -27,12 +27,14 @@ table{border-collapse:collapse;width:100%}td{padding:3px 2px}td:last-child{text-
   <div class="card">
     ・スタッフを<b>ドラッグ</b>して、お客さん・席に落とすと仕事開始<br>
     ・お客さんの頭の上のアイコン＝次にやること<br>
-    ・✂ はスタイリスト(店長・ミサキ・ケンタ)だけ。シャンプー・お会計・掃除は誰でも<br>
+    ・✂ はスタイリスト(店長・ミサキ・ケンタ・ユウ)だけ。シャンプー・お会計・掃除は誰でも<br>
     ・カットした席は<b>髪を掃除</b>しないと次が座れない(ビットくんは手が空くと自動で掃除)<br>・終わったら、同じお客さんの次の工程にそのまま進む<br>
     ・カラーやパーマの<b>放置時間</b>に、他の人を回すのがコツ<br>
     ・疲れたら<b>休憩室</b>へ。疲れたまま施術するとクレームが出やすい
   </div>
-  <button class="btn" id="go">開店する</button>
+  <button class="btn" id="go">小さな店で開店</button>
+  <button class="btn" id="goBig" style="background:#f6c64a">大型店で開店</button>
+  <div style="font-size:12px;font-weight:700;opacity:.7;margin-top:-6px">大型店：席6・シャンプー台4・スタッフ6人・客も多い</div>
   <div class="card" id="tRankC" style="width:300px;display:none"><div style="font-weight:900;margin-bottom:4px">🏆 ランキング</div><table id="tRank"></table></div>
 </div>
 <div id="modal" class="ov" style="background:rgba(43,39,36,.6)">
@@ -43,7 +45,7 @@ table{border-collapse:collapse;width:100%}td{padding:3px 2px}td:last-child{text-
   <div id="rSales" style="font-size:44px;font-weight:900"></div>
   <div id="rTitle" style="font-size:20px;font-weight:900"></div>
   <div class="card" style="width:300px"><table id="rTable"></table></div>
-  <div class="card" style="width:300px"><div style="font-weight:900;margin-bottom:4px">🏆 ランキング</div><table id="rRank"></table></div>
+  <div class="card" style="width:300px"><div style="font-weight:900;margin-bottom:4px">🏆 ランキング <span id="rStore" style="font-size:12px;opacity:.7"></span></div><table id="rRank"></table></div>
   <button class="btn" id="again">もう1日</button>
   <button class="btn sub" id="toTitle">タイトルへ</button>
 </div>
@@ -84,7 +86,7 @@ function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y
 function box(x, y, w, h, r, fill, lw = 3) { rr(x, y, w, h, r); ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = lw; ctx.stroke(); }
 // 仮の絵(画像が無いときだけ使う)
 const FB = {
-  st: '🧔', sa: '👩', sb: '👨', as: '🧑', c0: '👩‍💼', c1: '🧑‍🎓', c2: '👵', c3: '👱‍♀️',
+  st: '🧔', sa: '👩', sb: '👨', as: '🧑', sc: '🧑‍🦱', ad: '👧', c0: '👩‍💼', c1: '🧑‍🎓', c2: '👵', c3: '👱‍♀️',
   i_cut: '✂️', i_col: '🎨', i_perm: '🌀', i_bang: '💇', i_claim: '💢', i_help: '☎️', i_star: '⭐', timer: '⏲️'
 };
 function person(k, x, yb, h, o = {}) { // 立ち絵
@@ -142,16 +144,23 @@ const STAFF0 = [
   {id: 'st', name: '店長', role: 'sty', speed: 1.3, col: '#c9c2b6'},
   {id: 'sa', name: 'ミサキ', role: 'sty', speed: 1, col: '#e7c7c0'},
   {id: 'sb', name: 'ケンタ', role: 'sty', speed: 1, col: '#c3d3e0'},
+  {id: 'sc', name: 'ユウ', role: 'sty', speed: .9, col: '#d6e3c6'},
   {id: 'as', name: 'ビットくん', role: 'ast', speed: 1.1, col: '#d7d7cf'},
+  {id: 'ad', name: 'ハナ', role: 'ast', speed: 1, col: '#ecd3e2'},
 ];
-const CH_X = [50, 145, 240, 335], CH_Y = 262, SH_X = [40, 108, 176], SH_Y = 412, REG = {x: 338, y: 412}, REST = {x: 222, y: 300, w: 64, h: 112};
+const STORES = {
+  small: {name: '小さな店', ch: [50, 145, 240, 335], sh: [40, 108, 176], staff: ['st', 'sa', 'sb', 'as'], rate: 3.8, k: 1, mult: 1, q: 6},
+  big: {name: '大型店', ch: [34, 98, 163, 227, 292, 356], sh: [30, 84, 138, 192], staff: ['st', 'sa', 'sb', 'sc', 'as', 'ad'], rate: 6.2, k: .8, mult: 1.6, q: 8},
+};
+let STORE = 'small', S = STORES.small, K = 1;
+let CH_X = S.ch, CH_Y = 262, SH_X = S.sh, SH_Y = 412, REG = {x: 338, y: 412}, REST = {x: 222, y: 300, w: 64, h: 112};
 const SOFA = {x: 100, y: 590}, DOOR = {x: 34, y: 590};
 
 let G = null, scene = 'title', last = 0;
 function newDay() {
   return {
     min: 0, speed: 1, paused: false, sales: 0, bonus: 0, star: 3, served: 0, lost: 0, turned: 0, claims: 0, claimsOk: 0, arrivals: 0,
-    staff: STAFF0.map((s, i) => ({...s, x: 120 + i * 50, y: 520, tx: 120 + i * 50, ty: 520, st: 100, task: null, rest: false, away: 0})),
+    staff: STAFF0.filter(s => S.staff.includes(s.id)).map((s, i) => ({...s, x: 110 + i * 40, y: 520, tx: 110 + i * 40, ty: 520, st: 100, task: null, rest: false, away: 0})),
     chairs: CH_X.map(x => ({x, y: CH_Y, cust: null, dirty: false, sweep: null})),
     shs: SH_X.map(x => ({x, y: SH_Y, cust: null})), reg: {busy: null},
     custs: [], fx: [], nid: 1, helpAt: rnd(120, 330), helpDone: false, sel: null, drag: null, closed: false,
@@ -188,10 +197,10 @@ function assign(s, tgt) {
     st = c.chair || G.chairs.find(h => !h.cust && !h.dirty && !h.sweep);
     if (!st) return fail(s, G.chairs.some(h => h.dirty) ? '席が汚れてる！' : '席が空いてない');
     st.cust = c; c.chair = st; c.loc = 'chair'; c.tx = st.x; c.ty = st.y;
-    s.tx = st.x + 34; s.ty = st.y + 12;
+    s.tx = st.x + 34 * K; s.ty = st.y + 12;
   } else if (sp.at === 'sh') {
     st = G.shs.find(h => !h.cust); if (!st) return fail(s, 'シャンプー台が満席');
-    st.cust = c; c.sh = st; c.loc = 'sh'; c.tx = st.x; c.ty = st.y; s.tx = st.x + 26; s.ty = st.y + 10;
+    st.cust = c; c.sh = st; c.loc = 'sh'; c.tx = st.x; c.ty = st.y; s.tx = st.x + 24 * K; s.ty = st.y + 10;
   } else if (sp.at === 'reg') {
     if (G.reg.busy) return fail(s, 'レジ対応中'); G.reg.busy = c; c.loc = 'reg'; c.tx = REG.x - 46; c.ty = REG.y + 70; s.tx = REG.x; s.ty = REG.y - 40;
   } else { s.tx = c.x + 40; s.ty = c.y; }
@@ -240,10 +249,10 @@ function update(dt) {
   // 来店
   if (!G.closed) {
     const h = 9 + G.min / 60, peak = (h >= 12 && h < 14) ? 1.4 : (h >= 17) ? 1.5 : h < 10.5 ? .7 : 1;
-    const rate = 3.8 * peak * (.55 + G.star * .15) / 60;
+    const rate = S.rate * peak * (.55 + G.star * .15) / 60;
     if (Math.random() < rate * dm) {
       const q = G.custs.filter(c => c.loc === 'sofa' && c.state !== 'leave').length;
-      if (q >= 6) { G.turned++; G.star = clamp(G.star - .02, 1, 5); fx('満席で帰った…', 90, 520, '#e0533d', 13); }
+      if (q >= S.q) { G.turned++; G.star = clamp(G.star - .02, 1, 5); fx('満席で帰った…', 90, 520, '#e0533d', 13); }
       else { spawn(); G.arrivals++; }
     }
     if (G.min >= DAY_MIN) { G.closed = true; fx('受付終了', W / 2, 140, INK, 22); G.custs.filter(c => c.state === 'queue').forEach(c => leave(c)); }
@@ -280,7 +289,7 @@ function update(dt) {
         SFX.angry(); leave(c, true);
       }
     }
-    if (c.loc === 'sofa') { c.tx = SOFA.x + 22 + (qi % 6) * 40; c.ty = SOFA.y; qi++; }
+    if (c.loc === 'sofa') { c.tx = SOFA.x + 22 + (qi % S.q) * 240 / S.q; c.ty = SOFA.y; qi++; }
     if (c.loc === 'regq') { c.tx = REG.x + 6 - (ri % 3) * 34; c.ty = REG.y + 150; ri++; }
     if (c.loc === 'door') { c.tx = DOOR.x + di * 30; c.ty = DOOR.y - 2; di++; }
     c.x = lerp(c.x, c.tx, Math.min(1, dt * 5)); c.y = lerp(c.y, c.ty, Math.min(1, dt * 5));
@@ -313,27 +322,27 @@ function drawBG() {
   box(DOOR.x - 30, 480, 54, 120, 4, 'rgba(190,225,235,.7)'); text('入口', DOOR.x - 3, 470, 11);
 }
 function drawChair(ch) {
-  if (has('ch')) img('ch', ch.x, ch.y + 8, 150); else {
-    box(ch.x - 36, ch.y - 175, 72, 110, 10, '#e9f4f6'); ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(ch.x - 26, ch.y - 165, 10, 90);
-    box(ch.x - 26, ch.y - 70, 52, 50, 10, '#4b4f5c'); box(ch.x - 4, ch.y - 22, 8, 26, 2, '#888');
+  if (has('ch')) img('ch', ch.x, ch.y + 8, 150 * K); else {
+    box(ch.x - 36 * K, ch.y - 175, 72 * K, 110, 10, '#e9f4f6'); ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(ch.x - 26 * K, ch.y - 165, 10 * K, 90);
+    box(ch.x - 26 * K, ch.y - 70, 52 * K, 50, 10, '#4b4f5c'); box(ch.x - 4, ch.y - 22, 8, 26, 2, '#888');
   }
   if (ch.cust && ch.cust.loc !== 'chair') text('予約中', ch.x, ch.y - 40, 12, '#4a90c8', {stroke: 3});
   else if (!ch.cust && !ch.dirty) text('空き', ch.x, ch.y - 40, 12, '#2f8f5b', {stroke: 3});
   if (ch.dirty) { if (has('hair')) img('hair', ch.x - 2, ch.y + 14, 26); else { ctx.strokeStyle = '#4a3a2a'; ctx.lineWidth = 2; for (let i = 0; i < 9; i++) { const a = i * 1.7; ctx.beginPath(); ctx.moveTo(ch.x - 26 + i * 6, ch.y + 10); ctx.lineTo(ch.x - 22 + i * 6 + Math.cos(a) * 6, ch.y + 2 + Math.sin(a) * 4); ctx.stroke(); } }
     if (!ch.sweep) text('掃除して', ch.x, ch.y + 26, 11, '#e0533d', {stroke: 3}); }
 }
-function drawSh(sh) { if (!sh.cust) text('空き', sh.x, sh.y + 22, 11, '#2f8f5b', {stroke: 3}); if (has('sh')) img('sh', sh.x, sh.y + 6, 70); else { box(sh.x - 28, sh.y - 30, 56, 30, 8, '#4b4f5c'); box(sh.x - 32, sh.y - 58, 26, 26, 12, '#fff'); } }
+function drawSh(sh) { if (!sh.cust) text('空き', sh.x, sh.y + 22, 11, '#2f8f5b', {stroke: 3}); if (has('sh')) img('sh', sh.x, sh.y + 6, 70 * K); else { box(sh.x - 24 * K, sh.y - 30, 48 * K, 30, 8, '#4b4f5c'); box(sh.x - 28 * K, sh.y - 58, 24 * K, 26, 12, '#fff'); } }
 function bar(x, y, w, v, col) { box(x - w / 2, y, w, 7, 4, '#fff', 2); ctx.fillStyle = col; rr(x - w / 2 + 1.5, y + 1.5, (w - 3) * clamp(v, 0, 1), 4, 2); ctx.fill(); }
 function patCol(p) { return p > .5 ? '#5bbf8a' : p > .25 ? '#f6c64a' : '#e0533d'; }
 function drawCust(c) {
   const a = c.state === 'leave' ? 1 - (c.fade || 0) : 1; ctx.save(); ctx.globalAlpha = a;
   const sp = curStep(c);
   if ((c.loc === 'chair' || c.loc === 'sh') && c.state !== 'leave') {
-    const ov = c.state === 'proc' ? sp.ov : null; seated(c.t, c.x, c.y - (c.loc === 'sh' ? 4 : 18), c.loc === 'sh' ? 62 : 72, ov);
-  } else person(c.angry || c.claim ? 'c' + c.t + 'a' : 'c' + c.t, c.x, c.y, 76);
+    const ov = c.state === 'proc' ? sp.ov : null; seated(c.t, c.x, c.y - (c.loc === 'sh' ? 4 : 18), (c.loc === 'sh' ? 62 : 72) * K, ov);
+  } else person(c.angry || c.claim ? 'c' + c.t + 'a' : 'c' + c.t, c.x, c.y, 76 * K);
   ctx.restore();
   if (c.state === 'leave') return;
-  const top = c.y - (c.loc === 'chair' ? 100 : c.loc === 'sh' ? 74 : 84);
+  const top = c.y - (c.loc === 'chair' ? 100 : c.loc === 'sh' ? 74 : 84) * K;
   if (c.state === 'proc') { icon('timer', c.x, top - 12, 20); bar(c.x, top + 2, 44, c.pt / sp.dur, '#9fb3c8'); return; }
   if (c.state === 'busy') return;
   // 次にやることの吹き出し
@@ -349,20 +358,20 @@ function drawStaff(s) {
   else if (tired(s) && s.id !== 'as') k = s.id + '2';
   const hi = G.sel === s || (G.drag && G.drag.s === s);
   if (hi) { ctx.fillStyle = 'rgba(246,198,74,.55)'; ctx.beginPath(); ctx.ellipse(s.x, s.y, 30, 9, 0, 0, 7); ctx.fill(); }
-  person(k, s.x, s.y, s.rest ? 70 : 92, {col: s.col});
-  if (s.task) bar(s.x, s.y - (s.rest ? 80 : 102), 40, s.task.t / s.task.dur, '#4a90c8');
+  person(k, s.x, s.y, (s.rest ? 70 : 92) * K, {col: s.col});
+  if (s.task) bar(s.x, s.y - (s.rest ? 80 : 102) * K, 40, s.task.t / s.task.dur, '#4a90c8');
   text(s.name, s.x, s.y + 9, 10, INK, {stroke: 3});
 }
 function drawCards() {
   box(6, 640, W - 12, 134, 16, '#fff');
   G.staff.forEach((s, i) => {
-    const x = 14 + i * 93, y = 650, sel = G.sel === s;
-    box(x, y, 86, 116, 12, sel ? '#fff3c9' : s.away ? '#ddd' : '#f7f3ec', sel ? 3.5 : 2);
-    person(s.id + (tired(s) && s.id !== 'as' ? '2' : '0'), x + 43, y + 70, 58, {col: s.col, a: s.away ? .4 : 1});
-    text(s.name, x + 43, y + 82, 12);
-    bar(x + 43, y + 92, 62, s.st / 100, s.st > 50 ? '#5bbf8a' : s.st > 30 ? '#f6c64a' : '#e0533d');
+    const n = G.staff.length, cw = (W - 28) / n, x = 14 + i * cw, y = 650, sel = G.sel === s, m = (cw - 7) / 2;
+    box(x, y, cw - 7, 116, 12, sel ? '#fff3c9' : s.away ? '#ddd' : '#f7f3ec', sel ? 3.5 : 2);
+    person(s.id + (tired(s) && s.role !== 'ast' ? '2' : '0'), x + m, y + 70, n > 4 ? 50 : 58, {col: s.col, a: s.away ? .4 : 1});
+    text(s.name, x + m, y + 82, n > 4 ? 11 : 12);
+    bar(x + m, y + 92, Math.min(62, cw - 18), s.st / 100, s.st > 50 ? '#5bbf8a' : s.st > 30 ? '#f6c64a' : '#e0533d');
     const st = s.away ? '応援中〜' + clock(s.away) : s.task ? (s.task.type === 'sweep' ? '掃除中' : s.task.sp.name) : s.rest ? '休憩中' : tired(s) ? 'ヘトヘト' : '手が空いてる';
-    text(st, x + 43, y + 107, 10, s.task ? '#4a90c8' : INK);
+    text(st, x + m, y + 107, n > 4 ? 9 : 10, s.task ? '#4a90c8' : INK);
     if (s.role === 'sty') { ctx.fillStyle = '#e0533d'; ctx.beginPath(); ctx.arc(x + 12, y + 12, 5, 0, 7); ctx.fill(); }
   });
 }
@@ -405,14 +414,14 @@ function draw(now) {
 // ---------- 入力 ----------
 function pt(e) { return {x: (e.clientX - OX) / SC, y: (e.clientY - OY) / SC}; }
 function staffAt(p) {
-  for (let i = 0; i < 4; i++) { const x = 14 + i * 93; if (p.x >= x && p.x <= x + 86 && p.y >= 650 && p.y <= 766) return G.staff[i]; }
-  for (const s of G.staff) if (!s.away && Math.abs(p.x - s.x) < 26 && p.y < s.y + 12 && p.y > s.y - (s.rest ? 70 : 92)) return s;
+  const n = G.staff.length, cw = (W - 28) / n; for (let i = 0; i < n; i++) { const x = 14 + i * cw; if (p.x >= x && p.x <= x + cw - 7 && p.y >= 650 && p.y <= 766) return G.staff[i]; }
+  for (const s of G.staff) if (!s.away && Math.abs(p.x - s.x) < 26 * K && p.y < s.y + 12 && p.y > s.y - (s.rest ? 70 : 92) * K) return s;
   return null;
 }
 function targetAt(p) {
   const cs = G.custs.filter(c => c.state !== 'leave').sort((a, b) => b.y - a.y);
-  for (const c of cs) { const h = c.loc === 'chair' ? 110 : c.loc === 'sh' ? 90 : 120; if (Math.abs(p.x - c.x) < 30 && p.y < c.y + 14 && p.y > c.y - h) return {kind: 'cust', o: c}; }
-  for (const ch of G.chairs) if (Math.abs(p.x - ch.x) < 45 && p.y > ch.y - 175 && p.y < ch.y + 34) return {kind: 'chair', o: ch};
+  for (const c of cs) { const h = c.loc === 'chair' ? 110 : c.loc === 'sh' ? 90 : 120; if (Math.abs(p.x - c.x) < 30 * K && p.y < c.y + 14 && p.y > c.y - h * K) return {kind: 'cust', o: c}; }
+  for (const ch of G.chairs) if (Math.abs(p.x - ch.x) < 40 * K && p.y > ch.y - 175 && p.y < ch.y + 34) return {kind: 'chair', o: ch};
   if (p.x > REST.x && p.x < REST.x + REST.w && p.y > REST.y && p.y < REST.y + REST.h) return {kind: 'rest'};
   return null;
 }
@@ -438,23 +447,26 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
-function startDay() { au(); G = newDay(); scene = 'play'; $('#title').classList.remove('on'); $('#result').classList.remove('on'); SFX.bell(); }
+function startDay(st) { if (typeof st === 'string') STORE = st; S = STORES[STORE]; K = S.k; CH_X = S.ch; SH_X = S.sh; au(); G = newDay(); scene = 'play'; $('#title').classList.remove('on'); $('#result').classList.remove('on'); SFX.bell(); }
 function endDay() {
   scene = 'result'; G.custs.filter(c => c.state !== 'leave').forEach(c => leave(c));
-  const total = G.sales + G.bonus, T = total >= 180000 ? '伝説の美容室' : total >= 140000 ? '行列のできる店' : total >= 100000 ? '繁盛店' : total >= 60000 ? 'ふつうの店' : '閑古鳥…';
-  const R = loadRank(), me = {v: total, d: new Date().toLocaleDateString('ja-JP', {month: 'numeric', day: 'numeric'}) + ' ' + new Date().toTimeString().slice(0, 5), t: T, id: Date.now()};
-  R.push(me); R.sort((x, y) => y.v - x.v); const best = R[0] === me && R.length > 1; R.splice(10); try { localStorage.setItem('salon_rank', JSON.stringify(R)); } catch (e) {}
+  const total = G.sales + G.bonus, T = total >= 180000 * S.mult ? '伝説の美容室' : total >= 140000 * S.mult ? '行列のできる店' : total >= 100000 * S.mult ? '繁盛店' : total >= 60000 * S.mult ? 'ふつうの店' : '閑古鳥…';
+  const R = loadRank(STORE), me = {v: total, d: new Date().toLocaleDateString('ja-JP', {month: 'numeric', day: 'numeric'}) + ' ' + new Date().toTimeString().slice(0, 5), t: T, id: Date.now()};
+  R.push(me); R.sort((x, y) => y.v - x.v); const best = R[0] === me && R.length > 1; R.splice(10); try { localStorage.setItem(rkey(STORE), JSON.stringify(R)); } catch (e) {}
   const rank = R.indexOf(me) + 1;
   $('#rSales').textContent = '¥' + total.toLocaleString(); $('#rTitle').textContent = T + (rank === 1 ? ' 自己ベスト！' : rank ? `(${rank}位)` : '');
-  $('#rRank').innerHTML = rankHTML(R, me.id);
+  $('#rRank').innerHTML = rankHTML(R, me.id); $('#rStore').textContent = S.name;
   const rows = [['来店', G.arrivals + '人'], ['お会計', G.served + '人'], ['待たせて帰った', G.lost + '人'], ['満席で帰った', G.turned + '人'], ['クレーム', `${G.claims}件(対応 ${G.claimsOk})`], ['応援手当', '¥' + G.bonus.toLocaleString()], ['口コミ', '★' + G.star.toFixed(1)]];
   $('#rTable').innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
   $('#result').classList.add('on');
 }
-function loadRank() { try { const r = JSON.parse(localStorage.getItem('salon_rank') || '[]'); const b = +localStorage.getItem('salon_best') || 0; if (!r.length && b) r.push({v: b, d: '以前', t: '', id: 0}); return r; } catch (e) { return []; } }
+const rkey = k => k === 'small' ? 'salon_rank' : 'salon_rank_' + k;
+function loadRank(k) { try { const r = JSON.parse(localStorage.getItem(rkey(k)) || '[]'); const b = k === 'small' ? +localStorage.getItem('salon_best') || 0 : 0; if (!r.length && b) r.push({v: b, d: '以前', t: '', id: 0}); return r; } catch (e) { return []; } }
 function rankHTML(R, hi) { return R.map((r, i) => `<tr style="${r.id === hi ? 'background:#fff3c9;' : ''}"><td>${['🥇', '🥈', '🥉'][i] || (i + 1) + '位'} <small>${r.d}</small></td><td>¥${r.v.toLocaleString()}</td></tr>`).join(''); }
-function showTitle() { scene = 'title'; G = null; $('#result').classList.remove('on'); $('#title').classList.add('on'); const R = loadRank(); $('#tRankC').style.display = R.length ? 'block' : 'none'; $('#tRank').innerHTML = rankHTML(R.slice(0, 5)); }
-$('#go').onclick = startDay; $('#again').onclick = startDay; $('#toTitle').onclick = showTitle; showTitle();
+function showTitle() { scene = 'title'; G = null; $('#result').classList.remove('on'); $('#title').classList.add('on');
+  const h = Object.keys(STORES).map(k => { const R = loadRank(k).slice(0, 3); return R.length ? `<tr><td colspan="2" style="font-weight:900;padding-top:6px;text-align:left">${STORES[k].name}</td></tr>` + rankHTML(R) : ''; }).join('');
+  $('#tRankC').style.display = h ? 'block' : 'none'; $('#tRank').innerHTML = h; }
+$('#go').onclick = () => startDay('small'); $('#goBig').onclick = () => startDay('big'); $('#again').onclick = startDay; $('#toTitle').onclick = showTitle; showTitle();
 </script>
 </body>
 </html>
