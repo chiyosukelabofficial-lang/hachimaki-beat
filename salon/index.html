@@ -64,7 +64,7 @@ addEventListener('resize', resize); resize();
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), lerp = (a, b, k) => a + (b - a) * k, rnd = (a, b) => a + Math.random() * (b - a);
 
 // ---------- 画像(届いたら img/<key>.webp を置くだけで差し替わる) ----------
-const KEYS = ['bg', 'st0', 'st1', 'st2', 'sa0', 'sa1', 'sa2', 'sb0', 'sb1', 'sb2', 'as0', 'as1', 'as2', 'as3',
+const KEYS = ['bg', 'st0', 'st1', 'st2', 'sa0', 'sa1', 'sa2', 'sb0', 'sb1', 'sb2', 'as0', 'as1', 'as2', 'as3', 'sc0', 'sc1', 'sc2', 'ad0', 'ad1', 'ad2', 'ad3',
   'c0', 'c0s', 'c0a', 'c1', 'c1s', 'c1a', 'c2', 'c2s', 'c2a', 'c3', 'c3s', 'c3a', 'ch', 'sh', 'reg', 'sofa', 'hair', 'timer',
   'i_cut', 'i_col', 'i_perm', 'i_bang', 'i_claim', 'i_help', 'i_star'];
 const IM = {};
@@ -354,8 +354,8 @@ function drawCust(c) {
 function drawStaff(s) {
   if (s.away) return;
   let k = s.id + '0';
-  if (s.task) { if (s.id === 'as') k = s.task.type === 'sweep' ? 'as1' : s.task.sp.at === 'sh' ? 'as2' : s.task.sp.at === 'reg' ? 'as3' : 'as0'; else k = s.task.sp && s.task.sp.at === 'door' && s.id === 'st' ? 'st2' : s.id + '1'; }
-  else if (tired(s) && s.id !== 'as') k = s.id + '2';
+  if (s.task) { if (s.role === 'ast') k = s.id + (s.task.type === 'sweep' ? '1' : s.task.sp.at === 'sh' ? '2' : s.task.sp.at === 'reg' ? '3' : '0'); else k = s.task.sp && s.task.sp.at === 'door' && s.id === 'st' ? 'st2' : s.id + '1'; }
+  else if (tired(s) && s.role !== 'ast') k = s.id + '2';
   const hi = G.sel === s || (G.drag && G.drag.s === s);
   if (hi) { ctx.fillStyle = 'rgba(246,198,74,.55)'; ctx.beginPath(); ctx.ellipse(s.x, s.y, 30, 9, 0, 0, 7); ctx.fill(); }
   person(k, s.x, s.y, (s.rest ? 70 : 92) * K, {col: s.col});
