@@ -37,7 +37,7 @@ table{border-collapse:collapse;width:100%}td{padding:3px 2px}td:last-child{text-
   <div style="font-weight:700;font-size:14px">小さな美容室を、日本一の店に。</div>
   <div class="card">
     ・スタッフを<b>ドラッグ</b>して、お客さん・席に落とすと仕事開始<br>
-    ・お客さんの頭の上の吹き出し＝<b>次にやること</b>(下の●○は進み具合)<br>・<span style="background:#fde0d9;padding:0 4px;border-radius:4px">ピンク</span>はスタイリストだけ、<span style="background:#dbeef8;padding:0 4px;border-radius:4px">水色</span>はだれでもできる<br>
+    ・お客さんの頭の上の吹き出し＝<b>次にやること</b><br>　🧴シャンプー ✂️カット 💇前髪 🎨カラー 🌀パーマ 🚿流す 💨仕上げ 💴お会計<br>・<span style="background:#fde0d9;padding:0 4px;border-radius:4px">ピンク</span>はスタイリストだけ、<span style="background:#dbeef8;padding:0 4px;border-radius:4px">水色</span>はだれでもできる<br>
     ・スタイリスト＝店長・ミサキ・ケンタ・ユウ／アシスタント＝ビットくん・ハナ<br>
     ・カットした席は<b>髪を掃除</b>しないと次が座れない(ビットくんは手が空くと自動で掃除)<br>・終わったら、同じお客さんの次の工程にそのまま進む<br>
     ・カラーやパーマの<b>放置時間</b>に、他の人を回すのがコツ<br>
@@ -165,6 +165,7 @@ const STEP = {
   pay: {name: 'お会計', at: 'reg', dur: 5, who: 'any', ic: '💴'},
   claim: {name: 'クレーム対応', at: 'door', dur: 15, who: 'sty', ic: 'i_claim'},
 };
+const EMO = {sh: '🧴', cut: '✂️', bang: '💇', apply: '🎨', roll: '🌀', rinse: '🚿', fin: '💨', pay: '💴', claim: '🙇'};
 const SHORT = {sh: 'シャンプー', cut: 'カット', bang: '前髪カット', apply: 'カラー塗る', roll: 'パーマ巻く', rinse: '流す', fin: '仕上げ', pay: 'お会計', claim: '謝る'};
 const STAFF0 = [
   {id: 'st', name: '店長', role: 'sty', speed: 1.3, col: '#c9c2b6'},
@@ -376,7 +377,7 @@ function closeModal() { $('#modal').classList.remove('on'); G.modal = false; }
 // ---------- 描画 ----------
 function drawBG() {
   const bk = UPL('expand') && has('bg2') ? 'bg2' : 'bg';
-  if (has(bk)) { ctx.fillStyle = '#e8d7bd'; ctx.fillRect(0, 0, W, H); ctx.drawImage(IM[bk], 0, 64, W, 576); return; }
+  if (false && has(bk)) { ctx.fillStyle = '#e8d7bd'; ctx.fillRect(0, 0, W, H); ctx.drawImage(IM[bk], 0, 64, W, 576); return; }
   ctx.fillStyle = '#cfe7df'; ctx.fillRect(0, 0, W, 300); ctx.fillStyle = '#e8d7bd'; ctx.fillRect(0, 300, W, H);
   ctx.strokeStyle = 'rgba(0,0,0,.06)'; ctx.lineWidth = 2; for (let x = 0; x < W; x += 39) { ctx.beginPath(); ctx.moveTo(x, 300); ctx.lineTo(x, 640); ctx.stroke(); }
   box(DOOR.x - 30, 480, 54, 120, 4, 'rgba(190,225,235,.7)'); text('入口', DOOR.x - 3, 470, 11);
@@ -409,12 +410,11 @@ function drawBubble(c) {
   if (c.state === 'busy') return;
   // 次にやることの吹き出し
   const sel = G.sel || (G.drag && G.drag.s), ok = sel && stepOK(sel, c);
-  const sty = sp.who === 'sty', bw = 60 * Math.max(K, .85), dim = sel && !ok;
-  box(c.x - bw / 2, top - 40, bw, 36, 9, dim ? '#e6e6e6' : sty ? '#fde0d9' : '#dbeef8', sel && ok ? 3.5 : 2.5);
-  text(SHORT[steps(c)[c.si]] || sp.name, c.x, top - 28, 12, dim ? '#999' : INK);
-  // メニュー名と進み具合(●=済 ○=残り)
-  const st = steps(c), dots = st.map((k, i) => i < c.si ? '●' : '○').join('');
-  text(c.claim ? 'クレーム' : MENUS[c.menu].name, c.x, top - 15, 8.5, '#555'); text(dots, c.x, top - 7, 7, '#777');
+  const sty = sp.who === 'sty', dim = sel && !ok;
+  box(c.x - 20, top - 42, 40, 38, 11, dim ? '#e6e6e6' : sty ? '#fde0d9' : '#dbeef8', sel && ok ? 3.5 : 2.5);
+  emo(EMO[steps(c)[c.si]] || '❔', c.x, top - 17, 22, dim ? .35 : 1);
+  // 進み具合(●=済 ○=残り)
+  text(steps(c).map((k, i) => i < c.si ? '●' : '○').join(''), c.x, top - 8, 6.5, '#777');
   bar(c.x, top, 40, c.pat, patCol(c.pat));
 }
 function drawStaff(s) {
