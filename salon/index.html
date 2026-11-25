@@ -28,7 +28,7 @@ table{border-collapse:collapse;width:100%}td{padding:3px 2px}td:last-child{text-
     ・スタッフを<b>ドラッグ</b>して、お客さん・席に落とすと仕事開始<br>
     ・お客さんの頭の上のアイコン＝次にやること<br>
     ・✂ はスタイリスト(店長・ミサキ・ケンタ)だけ。シャンプー・お会計・掃除は誰でも<br>
-    ・カットした席は<b>髪を掃除</b>しないと次が座れない<br>
+    ・カットした席は<b>髪を掃除</b>しないと次が座れない(ビットくんは手が空くと自動で掃除)<br>・終わったら、同じお客さんの次の工程にそのまま進む<br>
     ・カラーやパーマの<b>放置時間</b>に、他の人を回すのがコツ<br>
     ・疲れたら<b>休憩室</b>へ。疲れたまま施術するとクレームが出やすい
   </div>
@@ -116,7 +116,7 @@ const SFX = {
 };
 
 // ---------- ルール ----------
-const DAY_MIN = 600, REAL_SEC = 180, MPS = DAY_MIN / REAL_SEC; // 9:00〜19:00 を3分で
+const DAY_MIN = 600, REAL_SEC = 240, MPS = DAY_MIN / REAL_SEC; // 9:00〜19:00 を4分で
 const MENUS = {
   cut: {name: 'カット', price: 4000, steps: ['sh', 'cut', 'pay'], w: 4},
   color: {name: 'カット+カラー', price: 9000, steps: ['apply', 'proc', 'rinse', 'fin', 'pay'], w: 2},
@@ -176,7 +176,7 @@ function assign(s, tgt) {
   if (tgt.kind === 'chair') {
     const ch = tgt.o; if (ch.cust) return assign(s, {kind: 'cust', o: ch.cust});
     if (!ch.dirty) return fail(s, 'きれいです'); if (ch.sweep) return fail(s, '掃除中');
-    s.rest = false; ch.sweep = s; s.task = {type: 'sweep', ch, t: 0, dur: 5}; s.tx = ch.x - 30; s.ty = ch.y + 8; SFX.go(); return;
+    s.rest = false; ch.sweep = s; s.task = {type: 'sweep', ch, t: 0, dur: 5}; s.tx = ch.x - 30; s.ty = ch.y + 8; if (!QUIET) SFX.go(); return;
   }
   const c = tgt.o, sp = curStep(c);
   if (!sp || c.state === 'busy' || c.state === 'proc' || c.state === 'leave') return fail(s, c.state === 'proc' ? '放置中' : '対応中');
@@ -193,9 +193,10 @@ function assign(s, tgt) {
   } else if (sp.at === 'reg') {
     if (G.reg.busy) return fail(s, 'レジ対応中'); G.reg.busy = c; c.loc = 'reg'; c.tx = REG.x - 46; c.ty = REG.y + 70; s.tx = REG.x; s.ty = REG.y - 40;
   } else { s.tx = c.x + 40; s.ty = c.y; }
-  s.rest = false; c.state = 'busy'; s.task = {type: 'step', c, sp, t: 0, dur: sp.dur}; SFX.go(); placeRest();
+  s.rest = false; c.state = 'busy'; s.task = {type: 'step', c, sp, t: 0, dur: sp.dur}; if (!QUIET) SFX.go(); placeRest();
 }
-function fail(s, msg) { fx(msg, s.x, s.y - 110, '#e0533d', 14); SFX.no(); }
+let QUIET = false;
+function fail(s, msg) { if (QUIET) return; fx(msg, s.x, s.y - 110, '#e0533d', 14); SFX.no(); }
 function placeRest() { G.staff.filter(s => s.rest && !s.task).forEach((s, i) => { s.tx = REST.x + 20 + (i % 2) * 38; s.ty = REST.y + 100 - Math.floor(i / 2) * 6; }); }
 
 function finishStep(s) {
@@ -211,6 +212,8 @@ function finishStep(s) {
   }
   if (sp.at === 'door') { G.claimsOk++; fx('おさまった…', c.x, c.y - 100, INK, 14); leave(c); return; }
   c.si++; c.pat = Math.min(1, c.pat + .35); after(c);
+  // 続けてできるなら、そのまま同じお客さんの次の工程へ
+  if (c.state === 'idle' && !s.rest) { QUIET = true; assign(s, {kind: 'cust', o: c}); QUIET = false; }
 }
 function after(c) {
   const ns = curStep(c), rest = steps(c).slice(c.si);
@@ -235,10 +238,10 @@ function update(dt) {
   // 来店
   if (!G.closed) {
     const h = 9 + G.min / 60, peak = (h >= 12 && h < 14) ? 1.4 : (h >= 17) ? 1.5 : h < 10.5 ? .7 : 1;
-    const rate = 5.2 * peak * (.55 + G.star * .15) / 60;
+    const rate = 3.8 * peak * (.55 + G.star * .15) / 60;
     if (Math.random() < rate * dm) {
       const q = G.custs.filter(c => c.loc === 'sofa' && c.state !== 'leave').length;
-      if (q >= 6) { G.turned++; G.star = clamp(G.star - .04, 1, 5); fx('満席で帰った…', 90, 520, '#e0533d', 13); }
+      if (q >= 6) { G.turned++; G.star = clamp(G.star - .02, 1, 5); fx('満席で帰った…', 90, 520, '#e0533d', 13); }
       else { spawn(); G.arrivals++; }
     }
     if (G.min >= DAY_MIN) { G.closed = true; fx('受付終了', W / 2, 140, INK, 22); G.custs.filter(c => c.state === 'queue').forEach(c => leave(c)); }
@@ -257,17 +260,21 @@ function update(dt) {
         if (s.task.type === 'sweep') { const ch = s.task.ch; ch.dirty = false; ch.sweep = null; s.task = null; SFX.done(); fx('ピカッ', ch.x, ch.y - 120, '#2f8f5b', 15); }
         else finishStep(s);
       }
-    } else s.st = Math.min(100, s.st + dm * (s.rest ? 2.2 : .08));
+    } else {
+      s.st = Math.min(100, s.st + dm * (s.rest ? 2.2 : .08));
+      // 手の空いたアシスタントは汚れた席を自動で掃除
+      if (s.role === 'ast' && !s.rest) { const ch = G.chairs.find(h => h.dirty && !h.sweep && !h.cust); if (ch) { QUIET = true; assign(s, {kind: 'chair', o: ch}); QUIET = false; } }
+    }
   }
   // お客さん
   let qi = 0, ri = 0, di = 0;
   for (const c of G.custs) {
     if (c.state === 'proc') { c.pt += dm; if (c.pt >= curStep(c).dur) { c.si++; after(c); SFX.done(); fx('放置おわり', c.x, c.y - 110, INK, 13); } }
     if (c.state === 'queue' || c.state === 'idle') {
-      c.pat -= dm / (c.claim ? 25 : 55);
+      c.pat -= dm / (c.claim ? 30 : 80);
       if (c.pat <= 0) {
         if (c.claim) { G.star = clamp(G.star - .5, 1, 5); fx('口コミ★1…', c.x, c.y - 100, '#e0533d', 15); }
-        else { G.lost++; G.star = clamp(G.star - .25, 1, 5); fx('もう帰る！', c.x, c.y - 100, '#e0533d', 15); }
+        else { G.lost++; G.star = clamp(G.star - .15, 1, 5); fx('もう帰る！', c.x, c.y - 100, '#e0533d', 15); }
         SFX.angry(); leave(c, true);
       }
     }
