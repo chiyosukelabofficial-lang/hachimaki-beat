@@ -16,6 +16,10 @@ canvas{position:fixed;inset:0;width:100%;height:100%}
 .btn.sub{background:#fff;font-size:15px;padding:9px 24px}
 table{border-collapse:collapse;width:100%}td{padding:3px 2px}td:last-child{text-align:right;font-weight:900}
 #modal .card{text-align:center}
+#result{justify-content:flex-start;padding-top:calc(env(safe-area-inset-top) + 24px);gap:10px}
+.rbox{width:300px;background:#fff;border:3px solid #2b2724;border-radius:16px;box-shadow:0 4px 0 #2b2724;padding:8px 14px;box-sizing:border-box;visibility:hidden}
+.rbox.on{visibility:visible;animation:pop .35s}.rl{font-size:13px;font-weight:900;opacity:.6;text-align:left}.rv{font-size:30px;font-weight:900}.rv.big{font-size:40px;color:#2f8f5b}.rs{font-size:12px;font-weight:700;opacity:.7}
+@keyframes pop{0%{transform:scale(.6)}70%{transform:scale(1.08)}100%{transform:scale(1)}}
 #lend{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px}
 </style>
 </head>
@@ -41,13 +45,18 @@ table{border-collapse:collapse;width:100%}td{padding:3px 2px}td:last-child{text-
   <div class="card"><div id="mText" style="font-weight:900;font-size:17px"></div><div id="mSub" style="font-size:13px;margin-top:6px"></div><div id="lend"></div></div>
 </div>
 <div id="result" class="ov">
-  <div style="font-weight:900;font-size:15px;opacity:.7">本日の営業終了</div>
-  <div id="rSales" style="font-size:44px;font-weight:900"></div>
-  <div id="rTitle" style="font-size:20px;font-weight:900"></div>
-  <div class="card" style="width:300px"><table id="rTable"></table></div>
-  <div class="card" style="width:300px"><div style="font-weight:900;margin-bottom:4px">🏆 ランキング <span id="rStore" style="font-size:12px;opacity:.7"></span></div><table id="rRank"></table></div>
-  <button class="btn" id="again">もう1日</button>
-  <button class="btn sub" id="toTitle">タイトルへ</button>
+  <div style="font-weight:900;font-size:15px;opacity:.7">本日の結果発表</div>
+  <div class="rbox" id="rb0"><div class="rl">来店客数</div><div class="rv" id="rv0"></div><div class="rs" id="rs0"></div></div>
+  <div class="rbox" id="rb1"><div class="rl">売上</div><div class="rv big" id="rv1"></div><div class="rs" id="rs1"></div></div>
+  <div class="rbox" id="rb2"><div class="rl">客単価</div><div class="rv" id="rv2"></div></div>
+  <div class="rbox" id="rb3"><div class="rl">満足度</div><div class="rv" id="rv3"></div><div class="rs" id="rs3"></div></div>
+  <div id="rEnd" style="display:none;flex-direction:column;align-items:center;gap:12px;width:100%">
+    <div id="rTitle" style="font-size:24px;font-weight:900"></div>
+    <div class="card" style="width:300px"><div style="font-weight:900;margin-bottom:4px">🏆 ランキング <span id="rStore" style="font-size:12px;opacity:.7"></span></div><table id="rRank"></table></div>
+    <button class="btn" id="again">もう1日</button>
+    <button class="btn sub" id="toTitle">タイトルへ</button>
+  </div>
+  <div id="rSkip" style="font-size:12px;opacity:.5">タップで早送り</div>
 </div>
 <script>
 'use strict';
@@ -72,7 +81,7 @@ KEYS.forEach(k => { const i = new Image(); i.onload = () => i.ok = 1; i.src = 'i
 const has = k => IM[k] && IM[k].ok;
 function img(k, x, yb, h, o = {}) {
   const i = IM[k], w = h * i.naturalWidth / i.naturalHeight;
-  ctx.save(); ctx.globalAlpha = o.a == null ? 1 : o.a; ctx.translate(x, yb); if (o.rot) ctx.rotate(o.rot); ctx.scale(o.flip ? -1 : 1, 1);
+  ctx.save(); ctx.globalAlpha = o.a == null ? 1 : o.a; ctx.translate(x, yb); if (o.rot) ctx.rotate(o.rot); ctx.scale(o.flip ? -1 : 1, o.sy || 1);
   ctx.drawImage(i, -w / 2, -h, w, h); ctx.restore();
 }
 function emo(s, x, y, size, a = 1) { ctx.save(); ctx.globalAlpha = a; ctx.font = `${size}px system-ui,"Apple Color Emoji","Noto Color Emoji",sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillText(s, x, y); ctx.restore(); }
@@ -99,7 +108,7 @@ function person(k, x, yb, h, o = {}) { // 立ち絵
   ctx.restore();
 }
 function seated(t, x, yb, h, extra) { // 席に座った姿
-  const k = 'c' + t + 's'; if (has(k)) { img(k, x, yb, h); } else {
+  const k = 'c' + t + 's'; if (has(k)) { img(k, x, yb + h * .32, h * 1.55); } else {
     ctx.beginPath(); ctx.moveTo(x - h * .32, yb); ctx.lineTo(x - h * .16, yb - h * .5); ctx.lineTo(x + h * .16, yb - h * .5); ctx.lineTo(x + h * .32, yb); ctx.closePath(); ctx.fillStyle = '#3d4250'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.stroke();
     emo(FB['c' + t], x, yb - h * .45, h * .42);
   }
@@ -116,6 +125,9 @@ const SFX = {
   no: () => beep(160, .18, .15, 'square'), done: () => beep(880, .12, .1, 'triangle'),
   cash: () => { beep(1568, .25, .12, 'triangle'); beep(2093, .35, .1, 'triangle', .08); },
   bell: () => { beep(1320, .3, .08); beep(990, .4, .08, 'sine', .12); }, angry: () => { beep(140, .25, .18, 'sawtooth'); beep(110, .3, .15, 'sawtooth', .15); },
+  thanks: () => { [523, 659, 784, 1047].forEach((f, i) => beep(f, .3, .12, 'triangle', i * .12)); },
+  roll: d => { for (let t = 0; t < d; t += .045) beep(150 + Math.random() * 60, .04, .05 + .12 * t / d, 'square', t); },
+  crash: () => { beep(1046, .5, .12, 'triangle'); beep(1568, .6, .1, 'triangle', .03); beep(2093, .8, .08, 'sine', .06); },
   phone: () => { for (let i = 0; i < 6; i++) beep(i % 2 ? 1400 : 1700, .05, .08, 'square', i * .06); },
 };
 
@@ -217,7 +229,7 @@ function finishStep(s) {
   if (sp.at === 'sh' && c.sh) { c.sh.cust = null; c.sh = null; }
   if (sp.at === 'reg') {
     G.reg.busy = null; const p = MENUS[c.menu].price; G.sales += p; G.served++; SFX.cash(); fx('+¥' + p.toLocaleString(), REG.x - 46, REG.y - 40, '#2f8f5b', 18);
-    G.star = clamp(G.star + (c.pat > .5 ? .06 : .01), 1, 5); leave(c);
+    G.star = clamp(G.star + (c.pat > .5 ? .06 : .01), 1, 5); G.patSum = (G.patSum || 0) + c.pat; leave(c);
     if (c.bad) G.pendingClaims = (G.pendingClaims || []).concat([{t: c.t, at: G.min + rnd(20, 45)}]);
     return;
   }
@@ -244,7 +256,7 @@ function leave(c, angry) {
 
 // ---------- 更新 ----------
 function update(dt) {
-  if (G.paused || G.modal) return;
+  if (G.paused || G.modal || G.ending) return;
   const dm = dt * MPS * G.speed; G.min += dm;
   // 来店
   if (!G.closed) {
@@ -255,7 +267,7 @@ function update(dt) {
       if (q >= S.q) { G.turned++; G.star = clamp(G.star - .02, 1, 5); fx('満席で帰った…', 90, 520, '#e0533d', 13); }
       else { spawn(); G.arrivals++; }
     }
-    if (G.min >= DAY_MIN) { G.closed = true; fx('受付終了', W / 2, 140, INK, 22); G.custs.filter(c => c.state === 'queue').forEach(c => leave(c)); }
+    if (G.min >= DAY_MIN) { G.closed = true; G.pendingClaims = []; fx('閉店！待ちのお客さんはまた今度', W / 2, 140, INK, 16); G.custs.filter(c => c.state === 'queue').forEach(c => { c.sorry = 1; leave(c); }); }
   }
   // クレーム来店
   if (G.pendingClaims) G.pendingClaims = G.pendingClaims.filter(p => { if (G.min >= p.at && !G.closed) { spawn({t: p.t}); return false; } return true; });
@@ -282,7 +294,7 @@ function update(dt) {
   for (const c of G.custs) {
     if (c.state === 'proc') { c.pt += dm; if (c.pt >= curStep(c).dur) { c.si++; after(c); SFX.done(); fx('放置おわり', c.x, c.y - 110, INK, 13); } }
     if (c.state === 'queue' || c.state === 'idle') {
-      c.pat -= dm / (c.claim ? 30 : 80);
+      if (!G.closed) c.pat -= dm / (c.claim ? 30 : 80);
       if (c.pat <= 0) {
         if (c.claim) { G.star = clamp(G.star - .5, 1, 5); fx('口コミ★1…', c.x, c.y - 100, '#e0533d', 15); }
         else { G.lost++; G.star = clamp(G.star - .15, 1, 5); fx('もう帰る！', c.x, c.y - 100, '#e0533d', 15); }
@@ -298,7 +310,7 @@ function update(dt) {
   G.custs = G.custs.filter(c => c.state !== 'gone');
   for (const f of G.fx) f.t += dt; G.fx = G.fx.filter(f => f.t < 1.3);
   const active = G.custs.filter(c => c.state !== 'leave').length;
-  if (G.closed && (active === 0 && !(G.pendingClaims || []).length || G.min >= DAY_MIN + 60)) endDay();
+  if (G.closed && !G.ending && (active === 0 || G.min >= DAY_MIN + 300)) { G.ending = performance.now(); SFX.thanks(); setTimeout(endDay, 3000); }
 }
 
 // ---------- 系列店ヘルプ ----------
@@ -407,6 +419,14 @@ function draw(now) {
   if (G.drag && G.drag.moved) { ctx.strokeStyle = '#f6c64a'; ctx.lineWidth = 5; ctx.setLineDash([8, 6]); ctx.beginPath(); ctx.moveTo(G.drag.s.x, G.drag.s.y - 40); ctx.lineTo(G.drag.x, G.drag.y); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = '#f6c64a'; ctx.beginPath(); ctx.arc(G.drag.x, G.drag.y, 10, 0, 7); ctx.fill(); }
   for (const f of G.fx) text(f.s, f.x, f.y - f.t * 30, f.size, f.col, {stroke: 4, a: 1.3 - f.t});
   drawHUD(); drawCards();
+  if (G.closed && !G.ending) text('閉店作業中 — 店内のお客さんを最後まで', W / 2, 92, 13, '#e0533d', {stroke: 4});
+  if (G.ending) {
+    const e = (performance.now() - G.ending) / 1000; ctx.fillStyle = `rgba(243,237,227,${Math.min(.92, e * 2)})`; ctx.fillRect(-OX / SC, -OY / SC, innerWidth / SC, innerHeight / SC);
+    const n = G.staff.length, gap = Math.min(64, (W - 40) / n);
+    G.staff.forEach((s, i) => { const bow = e > .8 + i * .08 && e < 2.4 + i * .08; person(bow && s.id === 'st' ? 'st2' : s.id + '0', W / 2 + (i - (n - 1) / 2) * gap, 470, 120, {col: s.col, rot: bow && s.id !== 'st' ? .1 : 0, sy: bow && s.id !== 'st' ? .9 : 1}); });
+    text('ありがとうございましたー！', W / 2, 270, 27, INK, {stroke: 6, a: e * 2});
+    text(`${clock(Math.min(G.min, DAY_MIN + 300))} 閉店`, W / 2, 312, 15, INK, {a: e * 2 - .5});
+  }
   if (G.sel) text(`${G.sel.name}をどこに？(タップで指示)`, W / 2, 624, 13, INK, {stroke: 4});
   if (G.paused) { ctx.fillStyle = 'rgba(43,39,36,.4)'; ctx.fillRect(0, 64, W, 570); text('一時停止中', W / 2, 330, 26, '#fff', {stroke: 6, sc: INK}); }
 }
@@ -448,18 +468,33 @@ function loop(now) {
 }
 requestAnimationFrame(loop);
 function startDay(st) { if (typeof st === 'string') STORE = st; S = STORES[STORE]; K = S.k; CH_X = S.ch; SH_X = S.sh; au(); G = newDay(); scene = 'play'; $('#title').classList.remove('on'); $('#result').classList.remove('on'); SFX.bell(); }
+let REVEAL = null;
 function endDay() {
   scene = 'result'; G.custs.filter(c => c.state !== 'leave').forEach(c => leave(c));
   const total = G.sales + G.bonus, T = total >= 180000 * S.mult ? '伝説の美容室' : total >= 140000 * S.mult ? '行列のできる店' : total >= 100000 * S.mult ? '繁盛店' : total >= 60000 * S.mult ? 'ふつうの店' : '閑古鳥…';
   const R = loadRank(STORE), me = {v: total, d: new Date().toLocaleDateString('ja-JP', {month: 'numeric', day: 'numeric'}) + ' ' + new Date().toTimeString().slice(0, 5), t: T, id: Date.now()};
-  R.push(me); R.sort((x, y) => y.v - x.v); const best = R[0] === me && R.length > 1; R.splice(10); try { localStorage.setItem(rkey(STORE), JSON.stringify(R)); } catch (e) {}
-  const rank = R.indexOf(me) + 1;
-  $('#rSales').textContent = '¥' + total.toLocaleString(); $('#rTitle').textContent = T + (rank === 1 ? ' 自己ベスト！' : rank ? `(${rank}位)` : '');
-  $('#rRank').innerHTML = rankHTML(R, me.id); $('#rStore').textContent = S.name;
-  const rows = [['来店', G.arrivals + '人'], ['お会計', G.served + '人'], ['待たせて帰った', G.lost + '人'], ['満席で帰った', G.turned + '人'], ['クレーム', `${G.claims}件(対応 ${G.claimsOk})`], ['応援手当', '¥' + G.bonus.toLocaleString()], ['口コミ', '★' + G.star.toFixed(1)]];
-  $('#rTable').innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
+  R.push(me); R.sort((x, y) => y.v - x.v); R.splice(10); try { localStorage.setItem(rkey(STORE), JSON.stringify(R)); } catch (e) {}
+  const rank = R.indexOf(me) + 1, unit = G.served ? Math.round(G.sales / G.served) : 0;
+  const sat = Math.round(100 * (G.patSum || 0) / Math.max(1, G.served + G.lost + G.claims - G.claimsOk));
+  $('#rTitle').textContent = T + (rank === 1 ? ' 自己ベスト！' : rank ? `（${rank}位）` : ''); $('#rRank').innerHTML = rankHTML(R, me.id); $('#rStore').textContent = S.name;
+  $('#rs0').textContent = `お会計 ${G.served}人 ／ 待たせて帰った ${G.lost}人 ／ 満席 ${G.turned}人`;
+  $('#rs1').textContent = G.bonus ? `うち応援手当 ¥${G.bonus.toLocaleString()}` : '';
+  $('#rs3').textContent = `口コミ ★${G.star.toFixed(1)} ／ クレーム ${G.claims}件(対応 ${G.claimsOk})`;
+  document.querySelectorAll('.rbox').forEach(b => b.classList.remove('on')); $('#rEnd').style.display = 'none'; $('#rSkip').style.display = 'block';
   $('#result').classList.add('on');
+  const items = [[0, G.arrivals, v => v + '人'], [1, total, v => '¥' + v.toLocaleString()], [2, unit, v => '¥' + v.toLocaleString()], [3, sat, v => v + '%' + (sat >= 80 ? ' 😊' : sat >= 50 ? ' 🙂' : ' 😐')]];
+  REVEAL = {i: 0, t: performance.now(), items, fast: false};
+  const step = () => {
+    if (!REVEAL || scene !== 'result') return; const r = REVEAL, it = r.items[r.i];
+    if (!it) { $('#rEnd').style.display = 'flex'; $('#rSkip').style.display = 'none'; SFX.thanks(); REVEAL = null; return; }
+    const [k, v, f] = it, el = $('#rv' + k), box = $('#rb' + k), dur = r.fast ? 0 : 1100; box.classList.add('on'); if (dur) SFX.roll(dur / 1000);
+    const t0 = performance.now(); const tick = () => { const p = Math.min(1, (performance.now() - t0) / (dur || 1)); el.textContent = p < 1 ? f(Math.round(v * Math.random())) : f(v);
+      if (p < 1) requestAnimationFrame(tick); else { SFX.crash(); r.i++; setTimeout(step, r.fast ? 60 : 450); } };
+    tick();
+  };
+  step();
 }
+$('#result').addEventListener('pointerdown', e => { if (REVEAL && !e.target.closest('.btn')) REVEAL.fast = true; });
 const rkey = k => k === 'small' ? 'salon_rank' : 'salon_rank_' + k;
 function loadRank(k) { try { const r = JSON.parse(localStorage.getItem(rkey(k)) || '[]'); const b = k === 'small' ? +localStorage.getItem('salon_best') || 0 : 0; if (!r.length && b) r.push({v: b, d: '以前', t: '', id: 0}); return r; } catch (e) { return []; } }
 function rankHTML(R, hi) { return R.map((r, i) => `<tr style="${r.id === hi ? 'background:#fff3c9;' : ''}"><td>${['🥇', '🥈', '🥉'][i] || (i + 1) + '位'} <small>${r.d}</small></td><td>¥${r.v.toLocaleString()}</td></tr>`).join(''); }
