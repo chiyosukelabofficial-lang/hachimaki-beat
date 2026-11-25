@@ -33,7 +33,7 @@ table{border-collapse:collapse;width:100%}td{padding:3px 2px}td:last-child{text-
     ・疲れたら<b>休憩室</b>へ。疲れたまま施術するとクレームが出やすい
   </div>
   <button class="btn" id="go">開店する</button>
-  <div style="font-size:12px;opacity:.6" id="bestT"></div>
+  <div class="card" id="tRankC" style="width:300px;display:none"><div style="font-weight:900;margin-bottom:4px">🏆 ランキング</div><table id="tRank"></table></div>
 </div>
 <div id="modal" class="ov" style="background:rgba(43,39,36,.6)">
   <div class="card"><div id="mText" style="font-weight:900;font-size:17px"></div><div id="mSub" style="font-size:13px;margin-top:6px"></div><div id="lend"></div></div>
@@ -43,7 +43,9 @@ table{border-collapse:collapse;width:100%}td{padding:3px 2px}td:last-child{text-
   <div id="rSales" style="font-size:44px;font-weight:900"></div>
   <div id="rTitle" style="font-size:20px;font-weight:900"></div>
   <div class="card" style="width:300px"><table id="rTable"></table></div>
+  <div class="card" style="width:300px"><div style="font-weight:900;margin-bottom:4px">🏆 ランキング</div><table id="rRank"></table></div>
   <button class="btn" id="again">もう1日</button>
+  <button class="btn sub" id="toTitle">タイトルへ</button>
 </div>
 <script>
 'use strict';
@@ -142,7 +144,7 @@ const STAFF0 = [
   {id: 'sb', name: 'ケンタ', role: 'sty', speed: 1, col: '#c3d3e0'},
   {id: 'as', name: 'ビットくん', role: 'ast', speed: 1.1, col: '#d7d7cf'},
 ];
-const CH_X = [75, 195, 315], CH_Y = 262, SH_X = [55, 150], SH_Y = 412, REG = {x: 330, y: 412}, REST = {x: 196, y: 300, w: 78, h: 112};
+const CH_X = [50, 145, 240, 335], CH_Y = 262, SH_X = [40, 108, 176], SH_Y = 412, REG = {x: 338, y: 412}, REST = {x: 222, y: 300, w: 64, h: 112};
 const SOFA = {x: 100, y: 590}, DOOR = {x: 34, y: 590};
 
 let G = null, scene = 'title', last = 0;
@@ -186,10 +188,10 @@ function assign(s, tgt) {
     st = c.chair || G.chairs.find(h => !h.cust && !h.dirty && !h.sweep);
     if (!st) return fail(s, G.chairs.some(h => h.dirty) ? '席が汚れてる！' : '席が空いてない');
     st.cust = c; c.chair = st; c.loc = 'chair'; c.tx = st.x; c.ty = st.y;
-    s.tx = st.x + 46; s.ty = st.y + 10;
+    s.tx = st.x + 34; s.ty = st.y + 12;
   } else if (sp.at === 'sh') {
     st = G.shs.find(h => !h.cust); if (!st) return fail(s, 'シャンプー台が満席');
-    st.cust = c; c.sh = st; c.loc = 'sh'; c.tx = st.x; c.ty = st.y; s.tx = st.x + 40; s.ty = st.y + 4;
+    st.cust = c; c.sh = st; c.loc = 'sh'; c.tx = st.x; c.ty = st.y; s.tx = st.x + 26; s.ty = st.y + 10;
   } else if (sp.at === 'reg') {
     if (G.reg.busy) return fail(s, 'レジ対応中'); G.reg.busy = c; c.loc = 'reg'; c.tx = REG.x - 46; c.ty = REG.y + 70; s.tx = REG.x; s.ty = REG.y - 40;
   } else { s.tx = c.x + 40; s.ty = c.y; }
@@ -311,14 +313,16 @@ function drawBG() {
   box(DOOR.x - 30, 480, 54, 120, 4, 'rgba(190,225,235,.7)'); text('入口', DOOR.x - 3, 470, 11);
 }
 function drawChair(ch) {
-  if (has('ch')) img('ch', ch.x, ch.y + 8, 170); else {
-    box(ch.x - 42, ch.y - 175, 84, 110, 10, '#e9f4f6'); ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(ch.x - 30, ch.y - 165, 12, 90);
-    box(ch.x - 30, ch.y - 70, 60, 50, 10, '#4b4f5c'); box(ch.x - 4, ch.y - 22, 8, 26, 2, '#888');
+  if (has('ch')) img('ch', ch.x, ch.y + 8, 150); else {
+    box(ch.x - 36, ch.y - 175, 72, 110, 10, '#e9f4f6'); ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(ch.x - 26, ch.y - 165, 10, 90);
+    box(ch.x - 26, ch.y - 70, 52, 50, 10, '#4b4f5c'); box(ch.x - 4, ch.y - 22, 8, 26, 2, '#888');
   }
+  if (ch.cust && ch.cust.loc !== 'chair') text('予約中', ch.x, ch.y - 40, 12, '#4a90c8', {stroke: 3});
+  else if (!ch.cust && !ch.dirty) text('空き', ch.x, ch.y - 40, 12, '#2f8f5b', {stroke: 3});
   if (ch.dirty) { if (has('hair')) img('hair', ch.x - 2, ch.y + 14, 26); else { ctx.strokeStyle = '#4a3a2a'; ctx.lineWidth = 2; for (let i = 0; i < 9; i++) { const a = i * 1.7; ctx.beginPath(); ctx.moveTo(ch.x - 26 + i * 6, ch.y + 10); ctx.lineTo(ch.x - 22 + i * 6 + Math.cos(a) * 6, ch.y + 2 + Math.sin(a) * 4); ctx.stroke(); } }
     if (!ch.sweep) text('掃除して', ch.x, ch.y + 26, 11, '#e0533d', {stroke: 3}); }
 }
-function drawSh(sh) { if (has('sh')) img('sh', sh.x, sh.y + 6, 80); else { box(sh.x - 34, sh.y - 30, 68, 30, 8, '#4b4f5c'); box(sh.x - 40, sh.y - 58, 30, 26, 12, '#fff'); } }
+function drawSh(sh) { if (!sh.cust) text('空き', sh.x, sh.y + 22, 11, '#2f8f5b', {stroke: 3}); if (has('sh')) img('sh', sh.x, sh.y + 6, 70); else { box(sh.x - 28, sh.y - 30, 56, 30, 8, '#4b4f5c'); box(sh.x - 32, sh.y - 58, 26, 26, 12, '#fff'); } }
 function bar(x, y, w, v, col) { box(x - w / 2, y, w, 7, 4, '#fff', 2); ctx.fillStyle = col; rr(x - w / 2 + 1.5, y + 1.5, (w - 3) * clamp(v, 0, 1), 4, 2); ctx.fill(); }
 function patCol(p) { return p > .5 ? '#5bbf8a' : p > .25 ? '#f6c64a' : '#e0533d'; }
 function drawCust(c) {
@@ -369,6 +373,8 @@ function drawHUD() {
   icon('i_star', 232, 32, 18); text(G.star.toFixed(1), 260, 32, 17);
   box(292, 14, 42, 36, 10, G.speed > 1 ? '#f6c64a' : '#f7f3ec', 2); text(G.speed > 1 ? '×2' : '×1', 313, 32, 14);
   box(340, 14, 42, 36, 10, G.paused ? '#f6c64a' : '#f7f3ec', 2); text(G.paused ? '▶' : 'Ⅱ', 361, 32, 15);
+  const fc = G.chairs.filter(h => !h.cust && !h.dirty).length, fs = G.shs.filter(h => !h.cust).length;
+  text(`席 空き${fc}/${G.chairs.length}　シャンプー台 空き${fs}/${G.shs.length}`, W / 2, 74, 12, INK, {stroke: 4});
   const p = clamp(G.min / DAY_MIN, 0, 1); ctx.fillStyle = '#9fd8c8'; ctx.fillRect(14, 58, (W - 28) * p, 4);
 }
 function draw(now) {
@@ -436,14 +442,19 @@ function startDay() { au(); G = newDay(); scene = 'play'; $('#title').classList.
 function endDay() {
   scene = 'result'; G.custs.filter(c => c.state !== 'leave').forEach(c => leave(c));
   const total = G.sales + G.bonus, T = total >= 180000 ? '伝説の美容室' : total >= 140000 ? '行列のできる店' : total >= 100000 ? '繁盛店' : total >= 60000 ? 'ふつうの店' : '閑古鳥…';
-  let best = 0; try { best = +localStorage.getItem('salon_best') || 0; if (total > best) localStorage.setItem('salon_best', total); } catch (e) {}
-  $('#rSales').textContent = '¥' + total.toLocaleString(); $('#rTitle').textContent = T + (total > best ? ' 自己ベスト！' : '');
+  const R = loadRank(), me = {v: total, d: new Date().toLocaleDateString('ja-JP', {month: 'numeric', day: 'numeric'}) + ' ' + new Date().toTimeString().slice(0, 5), t: T, id: Date.now()};
+  R.push(me); R.sort((x, y) => y.v - x.v); const best = R[0] === me && R.length > 1; R.splice(10); try { localStorage.setItem('salon_rank', JSON.stringify(R)); } catch (e) {}
+  const rank = R.indexOf(me) + 1;
+  $('#rSales').textContent = '¥' + total.toLocaleString(); $('#rTitle').textContent = T + (rank === 1 ? ' 自己ベスト！' : rank ? `(${rank}位)` : '');
+  $('#rRank').innerHTML = rankHTML(R, me.id);
   const rows = [['来店', G.arrivals + '人'], ['お会計', G.served + '人'], ['待たせて帰った', G.lost + '人'], ['満席で帰った', G.turned + '人'], ['クレーム', `${G.claims}件(対応 ${G.claimsOk})`], ['応援手当', '¥' + G.bonus.toLocaleString()], ['口コミ', '★' + G.star.toFixed(1)]];
   $('#rTable').innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
   $('#result').classList.add('on');
 }
-$('#go').onclick = startDay; $('#again').onclick = startDay;
-try { const b = +localStorage.getItem('salon_best') || 0; if (b) $('#bestT').textContent = '自己ベスト ¥' + b.toLocaleString(); } catch (e) {}
+function loadRank() { try { const r = JSON.parse(localStorage.getItem('salon_rank') || '[]'); const b = +localStorage.getItem('salon_best') || 0; if (!r.length && b) r.push({v: b, d: '以前', t: '', id: 0}); return r; } catch (e) { return []; } }
+function rankHTML(R, hi) { return R.map((r, i) => `<tr style="${r.id === hi ? 'background:#fff3c9;' : ''}"><td>${['🥇', '🥈', '🥉'][i] || (i + 1) + '位'} <small>${r.d}</small></td><td>¥${r.v.toLocaleString()}</td></tr>`).join(''); }
+function showTitle() { scene = 'title'; G = null; $('#result').classList.remove('on'); $('#title').classList.add('on'); const R = loadRank(); $('#tRankC').style.display = R.length ? 'block' : 'none'; $('#tRank').innerHTML = rankHTML(R.slice(0, 5)); }
+$('#go').onclick = startDay; $('#again').onclick = startDay; $('#toTitle').onclick = showTitle; showTitle();
 </script>
 </body>
 </html>
