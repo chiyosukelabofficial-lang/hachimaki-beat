@@ -22,6 +22,10 @@ table{border-collapse:collapse;width:100%}td{padding:3px 2px}td:last-child{text-
 @keyframes pop{0%{transform:scale(.6)}70%{transform:scale(1.08)}100%{transform:scale(1)}}
 .seg{display:flex;gap:8px;width:min(340px,92vw)}.seg button{flex:1;font:inherit;font-weight:900;font-size:16px;padding:9px 4px;border:3px solid #2b2724;border-radius:14px;background:#fff;color:#2b2724;box-shadow:0 3px 0 #2b2724;cursor:pointer}
 .seg button small{display:block;font-size:11px;font-weight:700;opacity:.65}.seg button.on{background:#f6c64a}
+.si{display:flex;align-items:center;gap:10px;background:#fff;border:3px solid #2b2724;border-radius:14px;padding:8px 10px;box-shadow:0 3px 0 #2b2724;text-align:left}
+.si .ic{font-size:28px;width:36px;text-align:center}.si .nm{font-weight:900;font-size:15px}.si .ds{font-size:11.5px;opacity:.75;line-height:1.4}
+.si button{margin-left:auto;font:inherit;font-weight:900;font-size:13px;padding:7px 10px;border:2.5px solid #2b2724;border-radius:10px;background:#9fd8c8;color:#2b2724;white-space:nowrap;cursor:pointer}
+.si button:disabled{background:#eee;opacity:.6}
 #lend{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px}
 </style>
 </head>
@@ -29,19 +33,25 @@ table{border-collapse:collapse;width:100%}td{padding:3px 2px}td:last-child{text-
 <canvas id="cv"></canvas>
 <div id="title" class="ov on">
   <div class="logo">回せ！<b>美容室</b></div>
-  <div style="font-weight:700;font-size:14px">指名なし・順番取りのみ。1日の売上を最大化せよ。</div>
+  <div style="font-weight:700;font-size:14px">小さな美容室を、日本一の店に。</div>
   <div class="card">
     ・スタッフを<b>ドラッグ</b>して、お客さん・席に落とすと仕事開始<br>
     ・お客さんの頭の上のアイコン＝次にやること<br>
     ・✂ はスタイリスト(店長・ミサキ・ケンタ・ユウ)だけ。シャンプー・お会計・掃除は誰でも<br>
     ・カットした席は<b>髪を掃除</b>しないと次が座れない(ビットくんは手が空くと自動で掃除)<br>・終わったら、同じお客さんの次の工程にそのまま進む<br>
     ・カラーやパーマの<b>放置時間</b>に、他の人を回すのがコツ<br>
-    ・疲れたら<b>休憩室</b>へ。疲れたまま施術するとクレームが出やすい
+    ・疲れたら<b>休憩室</b>へ。疲れたまま施術するとクレームが出やすい<br>・3日に1回は<b>休日</b>で大混雑。稼いだお金で<b>設備投資</b>して店を大きく
   </div>
-  <div class="seg" id="segStore"><button data-v="small" class="on">小さな店<small>席5・台3・4人</small></button><button data-v="big">大型店<small>席6・台4・6人</small></button></div>
-  <div class="seg" id="segDay"><button data-v="wd" class="on">平日<small>のんびり</small></button><button data-v="we">休日<small>大混雑・カラー多め</small></button></div>
+  <div class="card" id="tSave" style="width:300px;text-align:center;display:none"></div>
   <button class="btn" id="go">開店する</button>
-  <div class="card" id="tRankC" style="width:300px;display:none"><div style="font-weight:900;margin-bottom:4px">🏆 ランキング</div><table id="tRank"></table></div>
+  <button class="btn sub" id="reset" style="display:none">はじめからやり直す</button>
+
+</div>
+<div id="shop" class="ov" style="justify-content:flex-start;padding-top:calc(env(safe-area-inset-top) + 20px)">
+  <div style="font-weight:900;font-size:22px">🛠 設備投資</div>
+  <div id="shopCash" style="font-weight:900;font-size:17px"></div>
+  <div id="shopList" style="display:flex;flex-direction:column;gap:9px;width:min(350px,94vw)"></div>
+  <button class="btn" id="nextDay"></button>
 </div>
 <div id="modal" class="ov" style="background:rgba(43,39,36,.6)">
   <div class="card"><div id="mText" style="font-weight:900;font-size:17px"></div><div id="mSub" style="font-size:13px;margin-top:6px"></div><div id="lend"></div></div>
@@ -53,9 +63,9 @@ table{border-collapse:collapse;width:100%}td{padding:3px 2px}td:last-child{text-
   <div class="rbox" id="rb2"><div class="rl">客単価</div><div class="rv" id="rv2"></div></div>
   <div class="rbox" id="rb3"><div class="rl">満足度</div><div class="rv" id="rv3"></div><div class="rs" id="rs3"></div></div>
   <div id="rEnd" style="display:none;flex-direction:column;align-items:center;gap:12px;width:100%">
-    <div id="rTitle" style="font-size:24px;font-weight:900"></div>
-    <div class="card" style="width:300px"><div style="font-weight:900;margin-bottom:4px">🏆 ランキング <span id="rStore" style="font-size:12px;opacity:.7"></span></div><table id="rRank"></table></div>
-    <button class="btn" id="again">もう1日</button>
+    <div id="rTitle" style="font-size:22px;font-weight:900"></div>
+    <div class="card" style="width:300px"><div style="font-weight:900;margin-bottom:4px">📒 本日の収支</div><table id="rPL"></table></div>
+    <button class="btn" id="toShop">設備投資へ</button>
     <button class="btn sub" id="toTitle">タイトルへ</button>
   </div>
   <div id="rSkip" style="font-size:12px;opacity:.5">タップで早送り</div>
@@ -162,22 +172,44 @@ const STAFF0 = [
   {id: 'as', name: 'ビットくん', role: 'ast', speed: 1.1, col: '#d7d7cf'},
   {id: 'ad', name: 'ハナ', role: 'ast', speed: 1, col: '#ecd3e2'},
 ];
-const STORES = {
-  small: {name: '小さな店', ch: [40, 117, 195, 273, 350], sh: [40, 108, 176], staff: ['st', 'sa', 'sb', 'as'], rate: 3.8, k: .9, mult: 1, q: 6},
-  big: {name: '大型店', ch: [34, 98, 163, 227, 292, 356], sh: [30, 84, 138, 192], staff: ['st', 'sa', 'sb', 'sc', 'as', 'ad'], rate: 6.2, k: .8, mult: 1.6, q: 8},
-};
 const DAYS = {
   wd: {name: '平日', rate: .85, pat: 1.2, w: {}, mult: .85},
   we: {name: '休日', rate: 1.35, pat: .8, w: {color: 1.6, perm: 1.6, bang: .6}, mult: 1.3},
 };
-let STORE = 'small', S = STORES.small, K = .9, DAY = 'wd', D = DAYS.wd;
+const WAGE = {st: 0, sa: 12000, sb: 12000, sc: 11000, as: 8000, ad: 8000}, MAT = {cut: 200, color: 900, perm: 1300, bang: 0};
+const SHOP = [
+  {k: 'chair', ic: '💺', nm: 'カット席を増やす', ds: '席+1(最大6)', price: 120000, max: 3},
+  {k: 'sh', ic: '🚿', nm: 'シャンプー台を増やす', ds: '台+1(最大4)', price: 90000, max: 2},
+  {k: 'hire_sb', ic: '👨', nm: 'ケンタを雇う', ds: 'スタイリスト。日当¥12,000', price: 50000, max: 1},
+  {k: 'hire_ad', ic: '👧', nm: 'ハナを雇う', ds: 'アシスタント。自動で掃除。日当¥8,000', price: 40000, max: 1},
+  {k: 'hire_sc', ic: '🧑‍🦱', nm: 'ユウを雇う', ds: 'スタイリスト(少し遅い)。日当¥11,000', price: 50000, max: 1},
+  {k: 'autoReg', ic: '🏧', nm: '自動レジ', ds: 'お会計にスタッフが要らなくなる', price: 250000, max: 1},
+  {k: 'dryer', ic: '💨', nm: '速乾ドライヤー', ds: 'シャンプー・流し・仕上げが30%速い', price: 150000, max: 1},
+  {k: 'restSofa', ic: '🛋', nm: '休憩室にソファ', ds: '休憩の回復が2倍', price: 60000, max: 1},
+  {k: 'ad', ic: '📣', nm: 'チラシ・SNS広告', ds: '来客+15%(最大3段階)', price: 80000, max: 3},
+  {k: 'wait', ic: '🪑', nm: '待合を広げる', ds: '待てる人数+2(最大2段階)', price: 50000, max: 2},
+];
+const SAVE0 = {day: 1, cash: 30000, star: 3, up: {}, best: 0};
+let SV = load();
+function load() { try { return Object.assign({}, SAVE0, JSON.parse(localStorage.getItem('salon_save') || 'null') || {}); } catch (e) { return {...SAVE0}; } }
+function save() { try { localStorage.setItem('salon_save', JSON.stringify(SV)); } catch (e) {} }
+const UPL = k => SV.up[k] || 0;
+const isHoliday = d => d % 3 === 0;
+function buildStore() {
+  const nc = 3 + UPL('chair'), ns = 2 + UPL('sh');
+  const ch = Array.from({length: nc}, (_, i) => Math.round(40 + i * 310 / (nc - 1)));
+  const gap = ns <= 3 ? 68 : 54, sh = Array.from({length: ns}, (_, i) => (ns <= 3 ? 40 : 30) + i * gap);
+  const staff = ['st', 'sa', ...(UPL('hire_sb') ? ['sb'] : []), ...(UPL('hire_sc') ? ['sc'] : []), 'as', ...(UPL('hire_ad') ? ['ad'] : [])];
+  return {name: `${nc}席の店`, ch, sh, staff, rate: (3 + .3 * (nc - 3)) * (1 + .15 * UPL('ad')), k: nc <= 4 ? 1 : nc === 5 ? .9 : .8, mult: Math.max(.8, nc / 5), q: 5 + 2 * UPL('wait')};
+}
+let S = buildStore(), K = S.k, DAY = 'wd', D = DAYS.wd;
 let CH_X = S.ch, CH_Y = 262, SH_X = S.sh, SH_Y = 412, REG = {x: 338, y: 412}, REST = {x: 222, y: 300, w: 64, h: 112};
 const SOFA = {x: 100, y: 590}, DOOR = {x: 34, y: 590};
 
 let G = null, scene = 'title', last = 0;
 function newDay() {
   return {
-    min: 0, speed: 1, paused: false, sales: 0, bonus: 0, star: 3, served: 0, lost: 0, turned: 0, claims: 0, claimsOk: 0, arrivals: 0,
+    min: 0, speed: 1, paused: false, sales: 0, bonus: 0, mat: 0, star: SV.star, served: 0, lost: 0, turned: 0, claims: 0, claimsOk: 0, arrivals: 0,
     staff: STAFF0.filter(s => S.staff.includes(s.id)).map((s, i) => ({...s, x: 110 + i * 40, y: 520, tx: 110 + i * 40, ty: 520, st: 100, task: null, rest: false, away: 0})),
     chairs: CH_X.map(x => ({x, y: CH_Y, cust: null, dirty: false, sweep: null})),
     shs: SH_X.map(x => ({x, y: SH_Y, cust: null})), reg: {busy: null},
@@ -222,7 +254,7 @@ function assign(s, tgt) {
   } else if (sp.at === 'reg') {
     if (G.reg.busy) return fail(s, 'レジ対応中'); G.reg.busy = c; c.loc = 'reg'; c.tx = REG.x - 46; c.ty = REG.y + 70; s.tx = REG.x; s.ty = REG.y - 40;
   } else { s.tx = c.x + 40; s.ty = c.y; }
-  s.rest = false; c.state = 'busy'; s.task = {type: 'step', c, sp, t: 0, dur: sp.dur}; if (!QUIET) SFX.go(); placeRest();
+  s.rest = false; c.state = 'busy'; s.task = {type: 'step', c, sp, t: 0, dur: sp.dur * (UPL('dryer') && ['sh', 'rinse', 'fin'].includes(steps(c)[c.si]) ? .7 : 1)}; if (!QUIET) SFX.go(); placeRest();
 }
 let QUIET = false;
 function fail(s, msg) { if (QUIET) return; fx(msg, s.x, s.y - 110, '#e0533d', 14); SFX.no(); }
@@ -233,16 +265,18 @@ function finishStep(s) {
   if (sp.hair) c.hair = true;
   if (sp.who === 'sty' && sp.at === 'ch' && Math.random() < (tired(s) ? .45 : .05)) c.bad = true;
   if (sp.at === 'sh' && c.sh) { c.sh.cust = null; c.sh = null; }
-  if (sp.at === 'reg') {
-    G.reg.busy = null; const p = MENUS[c.menu].price; G.sales += p; G.served++; SFX.cash(); fx('+¥' + p.toLocaleString(), REG.x - 46, REG.y - 40, '#2f8f5b', 18);
-    G.star = clamp(G.star + (c.pat > .5 ? .06 : .01), 1, 5); G.patSum = (G.patSum || 0) + c.pat; leave(c);
-    if (c.bad) G.pendingClaims = (G.pendingClaims || []).concat([{t: c.t, at: G.min + rnd(20, 45)}]);
-    return;
-  }
+  if (sp.at === 'reg') { payDone(c); return; }
   if (sp.at === 'door') { G.claimsOk++; fx('おさまった…', c.x, c.y - 100, INK, 14); leave(c); return; }
   c.si++; c.pat = Math.min(1, c.pat + .35); after(c);
   // 続けてできるなら、そのまま同じお客さんの次の工程へ
   if (c.state === 'idle' && !s.rest) { QUIET = true; assign(s, {kind: 'cust', o: c}); QUIET = false; }
+}
+function payDone(c) {
+  {
+    G.reg.busy = null; G.reg.auto = null; const p = MENUS[c.menu].price; G.mat += MAT[c.menu]; G.sales += p; G.served++; SFX.cash(); fx('+¥' + p.toLocaleString(), REG.x - 46, REG.y - 40, '#2f8f5b', 18);
+    G.star = clamp(G.star + (c.pat > .5 ? .06 : .01), 1, 5); G.patSum = (G.patSum || 0) + c.pat; leave(c);
+    if (c.bad) G.pendingClaims = (G.pendingClaims || []).concat([{t: c.t, at: G.min + rnd(20, 45)}]);
+  }
 }
 function after(c) {
   const ns = curStep(c), rest = steps(c).slice(c.si);
@@ -255,7 +289,7 @@ function after(c) {
 }
 function leave(c, angry) {
   if (c.chair) { c.chair.cust = null; if (c.hair) c.chair.dirty = true; c.chair = null; }
-  if (c.sh) { c.sh.cust = null; c.sh = null; } if (G.reg.busy === c) G.reg.busy = null;
+  if (c.sh) { c.sh.cust = null; c.sh = null; } if (G.reg.busy === c) { G.reg.busy = null; G.reg.auto = null; }
   for (const s of G.staff) if (s.task && s.task.c === c) s.task = null;
   c.state = 'leave'; c.angry = angry; c.loc = 'out'; c.tx = DOOR.x - 60; c.ty = DOOR.y;
 }
@@ -290,10 +324,15 @@ function update(dt) {
         else finishStep(s);
       }
     } else {
-      s.st = Math.min(100, s.st + dm * (s.rest ? 2.2 : .08));
+      s.st = Math.min(100, s.st + dm * (s.rest ? 2.2 * (UPL('restSofa') ? 2 : 1) : .08));
       // 手の空いたアシスタントは汚れた席を自動で掃除
       if (s.role === 'ast' && !s.rest) { const ch = G.chairs.find(h => h.dirty && !h.sweep && !h.cust); if (ch) { QUIET = true; assign(s, {kind: 'chair', o: ch}); QUIET = false; } }
     }
+  }
+  // 自動レジ
+  if (UPL('autoReg')) {
+    if (!G.reg.busy) { const c = G.custs.find(c => c.loc === 'regq' && c.state === 'idle'); if (c) { G.reg.busy = c; G.reg.auto = {c, t: 0}; c.loc = 'reg'; c.state = 'busy'; c.tx = REG.x - 46; c.ty = REG.y + 70; } }
+    if (G.reg.auto) { G.reg.auto.t += dm; if (G.reg.auto.t >= 3) payDone(G.reg.auto.c); }
   }
   // お客さん
   let qi = 0, ri = 0, di = 0;
@@ -395,7 +434,7 @@ function drawCards() {
 }
 function drawHUD() {
   box(6, 6, W - 12, 52, 14, '#fff');
-  text(clock(Math.min(G.min, DAY_MIN + 60)), 46, 32, 20);
+  text(clock(Math.min(G.min, DAY_MIN + 300)), 46, 26, 19); text(`${SV.day}日目・${D.name}`, 46, 46, 10, D === DAYS.we ? '#e0533d' : INK);
   text('¥' + (G.sales + G.bonus).toLocaleString(), 150, 32, 20, '#2f8f5b');
   icon('i_star', 232, 32, 18); text(G.star.toFixed(1), 260, 32, 17);
   box(292, 14, 42, 36, 10, G.speed > 1 ? '#f6c64a' : '#f7f3ec', 2); text(G.speed > 1 ? '×2' : '×1', 313, 32, 14);
@@ -418,7 +457,7 @@ function draw(now) {
   G.custs.filter(c => c.loc === 'chair' || c.loc === 'sh').forEach(drawCust);
   G.staff.filter(s => s.y < 450).forEach(drawStaff);
   if (has('reg')) img('reg', REG.x, REG.y + 10, 70); else { box(REG.x - 44, REG.y - 40, 88, 50, 6, '#a87a4f'); box(REG.x - 16, REG.y - 62, 32, 24, 4, '#ddd'); }
-  text('レジ', REG.x, REG.y + 22, 11, INK, {stroke: 3});
+  text(UPL('autoReg') ? '自動レジ' : 'レジ', REG.x, REG.y + 22, 11, UPL('autoReg') ? '#4a90c8' : INK, {stroke: 3});
   G.custs.filter(c => !(c.loc === 'chair' || c.loc === 'sh')).sort((a, b) => a.y - b.y).forEach(drawCust);
   G.staff.filter(s => s.y >= 450).forEach(drawStaff);
   // ドラッグ線
@@ -473,16 +512,18 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
-function startDay() { S = STORES[STORE]; D = DAYS[DAY]; K = S.k; CH_X = S.ch; SH_X = S.sh; au(); G = newDay(); scene = 'play'; $('#title').classList.remove('on'); $('#result').classList.remove('on'); SFX.bell(); }
+function startDay() { S = buildStore(); K = S.k; CH_X = S.ch; SH_X = S.sh; DAY = isHoliday(SV.day) ? 'we' : 'wd'; D = DAYS[DAY]; au(); G = newDay(); scene = 'play'; ['#title', '#result', '#shop'].forEach(q => $(q).classList.remove('on')); SFX.bell(); fx(`${SV.day}日目 ${D.name}${DAY === 'we' ? '！大混雑の予感' : ''}`, W / 2, 330, DAY === 'we' ? '#e0533d' : INK, 22); }
 let REVEAL = null;
 function endDay() {
   scene = 'result'; G.custs.filter(c => c.state !== 'leave').forEach(c => leave(c));
   const total = G.sales + G.bonus, T = total >= 180000 * S.mult * D.mult ? '伝説の美容室' : total >= 140000 * S.mult * D.mult ? '行列のできる店' : total >= 100000 * S.mult * D.mult ? '繁盛店' : total >= 60000 * S.mult * D.mult ? 'ふつうの店' : '閑古鳥…';
-  const R = loadRank(STORE), me = {v: total, d: new Date().toLocaleDateString('ja-JP', {month: 'numeric', day: 'numeric'}) + ' ' + new Date().toTimeString().slice(0, 5), t: T, id: Date.now()};
-  R.push(me); R.sort((x, y) => y.v - x.v); R.splice(10); try { localStorage.setItem(rkey(STORE), JSON.stringify(R)); } catch (e) {}
-  const rank = R.indexOf(me) + 1, unit = G.served ? Math.round(G.sales / G.served) : 0;
-  const sat = Math.round(100 * (G.patSum || 0) / Math.max(1, G.served + G.lost + G.claims - G.claimsOk));
-  $('#rTitle').textContent = T + (rank === 1 ? ' 自己ベスト！' : rank ? `（${rank}位）` : ''); $('#rRank').innerHTML = rankHTML(R, me.id); $('#rStore').textContent = S.name + '・' + D.name;
+  const wages = G.staff.reduce((a, x) => a + WAGE[x.id], 0), rent = 5000 + 1500 * G.chairs.length + 1000 * G.shs.length, profit = total - wages - G.mat - rent;
+  const unit = G.served ? Math.round(G.sales / G.served) : 0, sat = Math.round(100 * (G.patSum || 0) / Math.max(1, G.served + G.lost + G.claims - G.claimsOk));
+  const before = SV.cash; SV.cash += profit; SV.star = G.star; SV.day++; SV.best = Math.max(SV.best || 0, total); save();
+  $('#rTitle').textContent = T;
+  const row = (a, b, c = '') => `<tr><td>${a}</td><td style="color:${c}">${b}</td></tr>`, yen = v => (v < 0 ? '−¥' : '¥') + Math.abs(v).toLocaleString();
+  $('#rPL').innerHTML = row('売上', yen(G.sales)) + (G.bonus ? row('応援手当', yen(G.bonus)) : '') + row('人件費', yen(-wages), '#e0533d') + row('材料費', yen(-G.mat), '#e0533d') + row('家賃', yen(-rent), '#e0533d')
+    + `<tr><td colspan="2"><hr style="border:none;border-top:2px dashed #2b2724;margin:4px 0"></td></tr>` + row('<b>本日の利益</b>', yen(profit), profit >= 0 ? '#2f8f5b' : '#e0533d') + row('所持金', yen(before) + ' → ' + yen(SV.cash));
   $('#rs0').textContent = `お会計 ${G.served}人 ／ 待たせて帰った ${G.lost}人 ／ 満席 ${G.turned}人`;
   $('#rs1').textContent = G.bonus ? `うち応援手当 ¥${G.bonus.toLocaleString()}` : '';
   $('#rs3').textContent = `口コミ ★${G.star.toFixed(1)} ／ クレーム ${G.claims}件(対応 ${G.claimsOk})`;
@@ -501,15 +542,24 @@ function endDay() {
   step();
 }
 $('#result').addEventListener('pointerdown', e => { if (REVEAL && !e.target.closest('.btn')) REVEAL.fast = true; });
-const rkey = (k, d = DAY) => (k === 'small' ? 'salon_rank' : 'salon_rank_' + k) + (d === 'we' ? '_we' : '');
-function loadRank(k, d = DAY) { try { const r = JSON.parse(localStorage.getItem(rkey(k, d)) || '[]'); const b = k === 'small' && d === 'wd' ? +localStorage.getItem('salon_best') || 0 : 0; if (!r.length && b) r.push({v: b, d: '以前', t: '', id: 0}); return r; } catch (e) { return []; } }
-function rankHTML(R, hi) { return R.map((r, i) => `<tr style="${r.id === hi ? 'background:#fff3c9;' : ''}"><td>${['🥇', '🥈', '🥉'][i] || (i + 1) + '位'} <small>${r.d}</small></td><td>¥${r.v.toLocaleString()}</td></tr>`).join(''); }
-function showTitle() { scene = 'title'; G = null; $('#result').classList.remove('on'); $('#title').classList.add('on');
-  const h = Object.keys(STORES).flatMap(k => Object.keys(DAYS).map(d => { const R = loadRank(k, d).slice(0, 3); return R.length ? `<tr><td colspan="2" style="font-weight:900;padding-top:6px;text-align:left">${STORES[k].name}・${DAYS[d].name}</td></tr>` + rankHTML(R) : ''; })).join('');
-  $('#tRankC').style.display = h ? 'block' : 'none'; $('#tRank').innerHTML = h; }
-$('#go').onclick = startDay;
-['segStore', 'segDay'].forEach(id => document.querySelectorAll('#' + id + ' button').forEach(b => b.onclick = () => {
-  document.querySelectorAll('#' + id + ' button').forEach(x => x.classList.toggle('on', x === b)); if (id === 'segStore') STORE = b.dataset.v; else DAY = b.dataset.v; })); $('#again').onclick = startDay; $('#toTitle').onclick = showTitle; showTitle();
+function showTitle() {
+  scene = 'title'; G = null; ['#result', '#shop'].forEach(q => $(q).classList.remove('on')); $('#title').classList.add('on'); SV = load();
+  const fresh = SV.day === 1 && !Object.keys(SV.up).length;
+  $('#tSave').style.display = fresh ? 'none' : 'block';
+  $('#tSave').innerHTML = `<b style="font-size:18px">${SV.day}日目(${isHoliday(SV.day) ? '休日' : '平日'})</b><br>所持金 ¥${SV.cash.toLocaleString()} ・ 口コミ★${SV.star.toFixed(1)}<br><small>${buildStore().name}・スタッフ${buildStore().staff.length}人・最高売上 ¥${(SV.best || 0).toLocaleString()}</small>`;
+  $('#go').textContent = fresh ? '開店する' : '続きから開店'; $('#reset').style.display = fresh ? 'none' : 'inline-block';
+}
+function openShop() {
+  $('#result').classList.remove('on'); $('#shop').classList.add('on');
+  $('#shopCash').textContent = `所持金 ¥${SV.cash.toLocaleString()}`;
+  $('#shopList').innerHTML = SHOP.map(it => { const lv = UPL(it.k), max = lv >= it.max, can = !max && SV.cash >= it.price;
+    return `<div class="si"><div class="ic">${it.ic}</div><div><div class="nm">${it.nm}${it.max > 1 ? ` <small>${lv}/${it.max}</small>` : ''}</div><div class="ds">${it.ds}</div></div><button data-k="${it.k}" ${can ? '' : 'disabled'}>${max ? '購入済み' : '¥' + it.price.toLocaleString()}</button></div>`; }).join('');
+  $('#shopList').querySelectorAll('button').forEach(b => b.onclick = () => { const it = SHOP.find(x => x.k === b.dataset.k); if (SV.cash < it.price) return; SV.cash -= it.price; SV.up[it.k] = UPL(it.k) + 1; save(); au(); SFX.cash(); openShop(); });
+  $('#nextDay').textContent = `${SV.day}日目(${isHoliday(SV.day) ? '休日' : '平日'})を開店`;
+}
+$('#go').onclick = startDay; $('#nextDay').onclick = startDay; $('#toShop').onclick = openShop; $('#toTitle').onclick = showTitle;
+$('#reset').onclick = () => { if (!confirm('本当にはじめからやり直しますか？(お金と設備がリセットされます)')) return; SV = {...SAVE0, up: {}}; save(); showTitle(); };
+showTitle();
 </script>
 </body>
 </html>
